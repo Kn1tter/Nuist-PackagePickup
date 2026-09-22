@@ -48,6 +48,10 @@ app.use((err, _req, res, _next) => {
 
 await ready;
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`NUIST Package Pickup API → http://0.0.0.0:${PORT}`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`NUIST Package Pickup API → http://0.0.0.0:${PORT}`);
+  });
+}
+
+export default app;

@@ -51,14 +51,9 @@ nuist-packagepickup/
 
 ## 部署（上线）
 
-已支持 **Vercel（前端）+ Render（后端）+ Supabase（PostgreSQL）**。
+**推荐不绑卡方案**：前后端都放 **Vercel** + 数据库用 **Supabase**。
 
-完整步骤见 **[DEPLOY.md](./DEPLOY.md)**。
-
-要点：
-- 有 `DATABASE_URL` → 用 PostgreSQL；没有 → 本地 SQLite
-- Vercel 环境变量：`VITE_API_BASE=https://你的后端.onrender.com`
-- Render 环境变量：`DATABASE_URL`、`JWT_SECRET`、`FRONTEND_ORIGIN`
+完整步骤见 **[DEPLOY.md](./DEPLOY.md)**（已不再依赖 Render）。
 
 ## 说明
 
