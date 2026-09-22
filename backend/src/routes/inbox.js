@@ -36,11 +36,13 @@ router.get('/unread-count', auth, async (req, res) => {
 /** 我的消息列表 */
 router.get('/messages', auth, async (req, res) => {
   try {
+    const me = await queryOne('SELECT * FROM users WHERE id = ?', [req.user.id]);
     const rows = await queryAll(
       `SELECT * FROM messages WHERE user_id = ? ORDER BY created_at DESC LIMIT 100`,
       [req.user.id]
     );
     res.json({
+      is_admin: isAdminUser(me),
       messages: rows.map((m) => ({
         ...m,
         is_read: m.is_read === true || m.is_read === 1 || m.is_read === 't',
@@ -49,6 +51,45 @@ router.get('/messages', auth, async (req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message || '加载消息失败' });
+  }
+});
+
+/** 管理员全站公告（群发站内信） */
+router.post('/announce', auth, async (req, res) => {
+  try {
+    const me = await queryOne('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    if (!isAdminUser(me)) {
+      return res.status(403).json({ error: '仅管理员可发送全站公告' });
+    }
+
+    const titleRaw = String(req.body?.title || '').trim();
+    const body = String(req.body?.body || '').trim();
+    const link = String(req.body?.link || '').trim() || '/messages';
+
+    if (titleRaw.length < 1 || titleRaw.length > 80) {
+      return res.status(400).json({ error: '标题请控制在 1–80 字' });
+    }
+    if (body.length < 1 || body.length > 2000) {
+      return res.status(400).json({ error: '正文请控制在 1–2000 字' });
+    }
+    if (link.length > 200) {
+      return res.status(400).json({ error: '链接过长' });
+    }
+
+    const title = titleRaw.startsWith('【全站公告】')
+      ? titleRaw
+      : `【全站公告】${titleRaw}`.slice(0, 120);
+
+    const result = await execute(
+      `INSERT INTO messages (user_id, title, body, link)
+       SELECT id, ?, ?, ? FROM users`,
+      [title, body, link]
+    );
+
+    res.status(201).json({ ok: true, count: result.changes || 0, title });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message || '发送公告失败' });
   }
 });
 
