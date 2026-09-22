@@ -26,6 +26,43 @@
       <p v-if="group.description" class="desc">{{ group.description }}</p>
     </section>
 
+    <section v-if="group.joined" class="panel chat">
+      <div class="chat-head">
+        <h2>组内聊天室</h2>
+        <span class="muted live">约每 3 秒刷新</span>
+      </div>
+      <div ref="chatBox" class="chat-box">
+        <p v-if="!chatMessages.length" class="muted empty-chat">还没有消息，打个招呼吧。</p>
+        <div
+          v-for="m in chatMessages"
+          :key="m.id"
+          class="bubble"
+          :class="{ mine: m.mine }"
+        >
+          <div class="bubble-meta">
+            <strong>{{ m.mine ? '我' : m.nickname || '同学' }}</strong>
+            <span>{{ formatTime(m.created_at) }}</span>
+            <button v-if="m.can_delete" class="x" type="button" @click="deleteChat(m.id)">删</button>
+          </div>
+          <p>{{ m.body }}</p>
+        </div>
+      </div>
+      <form class="chat-form" @submit.prevent="sendChat">
+        <input
+          v-model="chatText"
+          maxlength="1000"
+          placeholder="说点什么…"
+          required
+          :disabled="chatSending"
+        />
+        <button class="btn" type="submit" :disabled="chatSending || !chatText.trim()">
+          {{ chatSending ? '…' : '发送' }}
+        </button>
+      </form>
+      <p v-if="chatError" class="err">{{ chatError }}</p>
+    </section>
+    <p v-else class="hint muted">加入本组后可进入聊天室、发布开黑邀请。</p>
+
     <section v-if="group.joined" class="panel invite-form">
       <h2>发开黑邀请</h2>
       <form @submit.prevent="postInvite">
@@ -53,7 +90,6 @@
         </button>
       </form>
     </section>
-    <p v-else class="hint muted">加入本组后才能发布开黑邀请。</p>
 
     <section class="invites">
       <h2>开黑邀请</h2>
@@ -99,7 +135,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { request } from '../api/request'
 
@@ -113,11 +149,58 @@ const posting = ref(false)
 const inviteError = ref('')
 const invite = reactive({ title: '', body: '', contact: '' })
 
+const chatMessages = ref([])
+const chatText = ref('')
+const chatSending = ref(false)
+const chatError = ref('')
+const chatBox = ref(null)
+let pollTimer = null
+
 function formatTime(v) {
   if (!v) return ''
   const d = new Date(v)
   if (Number.isNaN(d.getTime())) return String(v).slice(0, 16)
   return d.toLocaleString('zh-CN', { hour12: false })
+}
+
+async function scrollChat() {
+  await nextTick()
+  if (chatBox.value) chatBox.value.scrollTop = chatBox.value.scrollHeight
+}
+
+async function loadChat({ incremental = false } = {}) {
+  if (!group.value?.joined) return
+  try {
+    const after = incremental && chatMessages.value.length
+      ? chatMessages.value[chatMessages.value.length - 1].id
+      : 0
+    const data = await request(
+      `/games/groups/${route.params.id}/chat${after ? `?after=${after}` : ''}`
+    )
+    const list = data.messages || []
+    if (!incremental) {
+      chatMessages.value = list
+      await scrollChat()
+    } else if (list.length) {
+      chatMessages.value = [...chatMessages.value, ...list]
+      await scrollChat()
+    }
+    chatError.value = ''
+  } catch (e) {
+    chatError.value = e.message
+  }
+}
+
+function startPoll() {
+  stopPoll()
+  pollTimer = setInterval(() => loadChat({ incremental: true }), 3000)
+}
+
+function stopPoll() {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
 }
 
 async function load() {
@@ -127,8 +210,16 @@ async function load() {
     group.value = data.group
     members.value = data.members || []
     invites.value = data.invites || []
+    if (data.group?.joined) {
+      await loadChat({ incremental: false })
+      startPoll()
+    } else {
+      chatMessages.value = []
+      stopPoll()
+    }
   } catch (e) {
     error.value = e.message
+    stopPoll()
   }
 }
 
@@ -151,12 +242,46 @@ async function leave() {
 }
 
 async function removeGroup() {
-  if (!confirm('确定删除该游戏组？邀请也会一起删除。')) return
+  if (!confirm('确定删除该游戏组？邀请与聊天记录也会一起删除。')) return
   try {
+    stopPoll()
     await request(`/games/groups/${route.params.id}`, { method: 'DELETE' })
     router.replace('/games')
   } catch (e) {
     error.value = e.message
+  }
+}
+
+async function sendChat() {
+  const body = chatText.value.trim()
+  if (!body) return
+  chatSending.value = true
+  chatError.value = ''
+  try {
+    const data = await request(`/games/groups/${route.params.id}/chat`, {
+      method: 'POST',
+      body: { body },
+    })
+    chatText.value = ''
+    if (data.message) {
+      chatMessages.value = [...chatMessages.value, data.message]
+      await scrollChat()
+    } else {
+      await loadChat({ incremental: true })
+    }
+  } catch (e) {
+    chatError.value = e.message
+  } finally {
+    chatSending.value = false
+  }
+}
+
+async function deleteChat(id) {
+  try {
+    await request(`/games/chat/${id}`, { method: 'DELETE' })
+    chatMessages.value = chatMessages.value.filter((m) => m.id !== id)
+  } catch (e) {
+    chatError.value = e.message
   }
 }
 
@@ -198,7 +323,16 @@ async function deleteInvite(id) {
   }
 }
 
+watch(
+  () => route.params.id,
+  () => {
+    stopPoll()
+    load()
+  }
+)
+
 onMounted(load)
+onUnmounted(stopPoll)
 </script>
 
 <style scoped>
@@ -210,7 +344,8 @@ onMounted(load)
 .head,
 .invite-form,
 .card,
-.members {
+.members,
+.chat {
   padding: 1.2rem 1.3rem;
 }
 
@@ -231,6 +366,88 @@ h1 {
 h2 {
   margin: 0 0 0.75rem;
   font-size: 1.1rem;
+}
+
+.chat-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.chat-head h2 {
+  margin: 0;
+}
+
+.live {
+  font-size: 0.78rem;
+}
+
+.chat-box {
+  height: min(360px, 50vh);
+  overflow-y: auto;
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.75rem;
+  border-radius: 14px;
+  background: rgba(15, 47, 36, 0.06);
+  border: 1px solid var(--line);
+  margin-bottom: 0.75rem;
+}
+
+.empty-chat {
+  margin: auto;
+  text-align: center;
+}
+
+.bubble {
+  max-width: 85%;
+  justify-self: start;
+  padding: 0.55rem 0.75rem;
+  border-radius: 12px 12px 12px 4px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--line);
+}
+
+.bubble.mine {
+  justify-self: end;
+  border-radius: 12px 12px 4px 12px;
+  background: rgba(184, 224, 200, 0.55);
+}
+
+.bubble-meta {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
+
+.bubble p {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.bubble .x {
+  border: none;
+  background: none;
+  color: #a33;
+  cursor: pointer;
+  font-size: 0.72rem;
+  margin-left: auto;
+}
+
+.chat-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.chat-form input {
+  flex: 1;
 }
 
 .desc {

@@ -5,6 +5,7 @@
         <h1>反馈</h1>
         <p class="muted">建议、Bug、想要的功能，直接告诉管理员。</p>
       </div>
+      <RouterLink v-if="isAdmin" class="btn" to="/messages">发全站公告</RouterLink>
     </div>
 
     <form class="panel form" @submit.prevent="submit">
@@ -48,6 +49,7 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { request } from '../api/request'
 
 const feedbacks = ref([])
@@ -124,6 +126,14 @@ onMounted(load)
 .form,
 .card {
   padding: 1.2rem 1.3rem;
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 h1 {

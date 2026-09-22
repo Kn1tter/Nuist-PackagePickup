@@ -17,6 +17,10 @@
       </div>
     </div>
 
+    <RouterLink v-if="user?.is_admin" class="btn announce-link" to="/messages">
+      发全站公告（群通知）
+    </RouterLink>
+
     <div class="tabs">
       <button :class="{ on: tab === 'posted' }" type="button" @click="switchTab('posted')">我发的</button>
       <button :class="{ on: tab === 'accepted' }" type="button" @click="switchTab('accepted')">我接的</button>
@@ -34,7 +38,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import OrderCard from '../components/OrderCard.vue'
 import { clearSession, getToken, getUser, request, setSession } from '../api/request'
 
@@ -100,6 +104,12 @@ h1 {
   grid-template-columns: 1fr 1fr;
   gap: 0.75rem;
   margin: 1rem 0;
+}
+
+.announce-link {
+  display: inline-flex;
+  margin-bottom: 1rem;
+  text-decoration: none;
 }
 
 .stats div {

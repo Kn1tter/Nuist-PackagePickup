@@ -173,6 +173,7 @@ router.delete('/groups/:id', auth, async (req, res) => {
       return res.status(403).json({ error: '无权删除' });
     }
     await execute(`DELETE FROM game_invites WHERE group_id = ?`, [req.params.id]);
+    await execute(`DELETE FROM game_chat_messages WHERE group_id = ?`, [req.params.id]);
     await execute(`DELETE FROM game_group_members WHERE group_id = ?`, [req.params.id]);
     await execute(`DELETE FROM game_groups WHERE id = ?`, [req.params.id]);
     res.json({ ok: true });
@@ -247,6 +248,101 @@ router.delete('/invites/:id', auth, async (req, res) => {
       Number(group?.creator_id) === Number(req.user.id);
     if (!ok) return res.status(403).json({ error: '无权删除' });
     await execute(`DELETE FROM game_invites WHERE id = ?`, [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message || '删除失败' });
+  }
+});
+
+/** 组内聊天：拉取消息（仅成员；after=上次最后一条 id） */
+router.get('/groups/:id/chat', auth, async (req, res) => {
+  try {
+    if (!(await isMember(req.params.id, req.user.id))) {
+      return res.status(403).json({ error: '加入本组后才能查看聊天室' });
+    }
+    const after = Number(req.query.after) || 0;
+    const rows = after
+      ? await queryAll(
+          `SELECT c.id, c.group_id, c.user_id, c.body, c.created_at, u.nickname
+           FROM game_chat_messages c
+           JOIN users u ON u.id = c.user_id
+           WHERE c.group_id = ? AND c.id > ?
+           ORDER BY c.id ASC
+           LIMIT 100`,
+          [req.params.id, after]
+        )
+      : await queryAll(
+          `SELECT c.id, c.group_id, c.user_id, c.body, c.created_at, u.nickname
+           FROM game_chat_messages c
+           JOIN users u ON u.id = c.user_id
+           WHERE c.group_id = ?
+           ORDER BY c.id DESC
+           LIMIT 50`,
+          [req.params.id]
+        );
+
+    const messages = after ? rows : rows.reverse();
+    const me = await queryOne('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    const group = await queryOne(`SELECT * FROM game_groups WHERE id = ?`, [req.params.id]);
+    res.json({
+      messages: messages.map((m) => ({
+        ...m,
+        mine: Number(m.user_id) === Number(req.user.id),
+        can_delete:
+          Number(m.user_id) === Number(req.user.id) ||
+          isAdminUser(me) ||
+          Number(group?.creator_id) === Number(req.user.id),
+      })),
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message || '加载聊天失败' });
+  }
+});
+
+/** 组内聊天：发消息（仅成员） */
+router.post('/groups/:id/chat', auth, async (req, res) => {
+  try {
+    if (!(await isMember(req.params.id, req.user.id))) {
+      return res.status(403).json({ error: '加入本组后才能发言' });
+    }
+    const body = String(req.body?.body || '').trim();
+    if (body.length < 1 || body.length > 1000) {
+      return res.status(400).json({ error: '消息请控制在 1–1000 字' });
+    }
+    const info = await insert(
+      `INSERT INTO game_chat_messages (group_id, user_id, body) VALUES (?, ?, ?)`,
+      [req.params.id, req.user.id, body]
+    );
+    const row = await queryOne(
+      `SELECT c.id, c.group_id, c.user_id, c.body, c.created_at, u.nickname
+       FROM game_chat_messages c
+       JOIN users u ON u.id = c.user_id
+       WHERE c.id = ?`,
+      [info.lastInsertRowid]
+    );
+    res.status(201).json({
+      message: { ...row, mine: true, can_delete: true },
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message || '发送失败' });
+  }
+});
+
+router.delete('/chat/:id', auth, async (req, res) => {
+  try {
+    const msg = await queryOne(`SELECT * FROM game_chat_messages WHERE id = ?`, [req.params.id]);
+    if (!msg) return res.status(404).json({ error: '消息不存在' });
+    const me = await queryOne('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    const group = await queryOne(`SELECT * FROM game_groups WHERE id = ?`, [msg.group_id]);
+    const ok =
+      Number(msg.user_id) === Number(req.user.id) ||
+      isAdminUser(me) ||
+      Number(group?.creator_id) === Number(req.user.id);
+    if (!ok) return res.status(403).json({ error: '无权删除' });
+    await execute(`DELETE FROM game_chat_messages WHERE id = ?`, [req.params.id]);
     res.json({ ok: true });
   } catch (e) {
     console.error(e);

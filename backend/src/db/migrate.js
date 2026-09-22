@@ -109,6 +109,18 @@ export async function migrate({ queryAll, queryOne, execute, isPostgres }) {
       )
     `);
     await execute(`CREATE INDEX IF NOT EXISTS idx_schedule_user ON schedule_courses(user_id)`);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS game_chat_messages (
+        id SERIAL PRIMARY KEY,
+        group_id INT NOT NULL REFERENCES game_groups(id) ON DELETE CASCADE,
+        user_id INT NOT NULL REFERENCES users(id),
+        body TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await execute(
+      `CREATE INDEX IF NOT EXISTS idx_game_chat_group ON game_chat_messages(group_id, id DESC)`
+    );
   } else {
     try {
       await execute(`ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0`);
@@ -215,6 +227,18 @@ export async function migrate({ queryAll, queryOne, execute, isPostgres }) {
         updated_at TEXT DEFAULT (datetime('now'))
       )
     `);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS game_chat_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        group_id INTEGER NOT NULL REFERENCES game_groups(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        body TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now'))
+      )
+    `);
+    await execute(
+      `CREATE INDEX IF NOT EXISTS idx_game_chat_group ON game_chat_messages(group_id, id DESC)`
+    );
   }
 
   await syncAdmins({ queryOne, execute, isPostgres });
@@ -247,7 +271,19 @@ export async function syncAdmins({
       [sid]
     );
   }
-  // 仅通过 ADMIN_STUDENT_IDS 提升管理员，不再自动把首个注册用户设为管理员
+
+  // 未配置 ADMIN_STUDENT_IDS 时，保留「最早注册用户」为管理员，避免本地/初期无人可管
+  if (!ids.length) {
+    const first = await q1(`SELECT id FROM users ORDER BY id ASC LIMIT 1`);
+    if (first) {
+      await exec(
+        pg()
+          ? `UPDATE users SET is_admin = TRUE WHERE id = ?`
+          : `UPDATE users SET is_admin = 1 WHERE id = ?`,
+        [first.id]
+      );
+    }
+  }
 }
 
 export function isAdminUser(user) {
