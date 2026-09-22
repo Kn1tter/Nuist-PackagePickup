@@ -58,6 +58,36 @@ export async function migrate({ queryAll, queryOne, execute, isPostgres }) {
       )
     `);
     await execute(`CREATE INDEX IF NOT EXISTS idx_messages_user ON messages(user_id, is_read, created_at DESC)`);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS game_groups (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(60) NOT NULL UNIQUE,
+        description TEXT,
+        creator_id INT NOT NULL REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS game_group_members (
+        group_id INT NOT NULL REFERENCES game_groups(id) ON DELETE CASCADE,
+        user_id INT NOT NULL REFERENCES users(id),
+        joined_at TIMESTAMP DEFAULT NOW(),
+        PRIMARY KEY (group_id, user_id)
+      )
+    `);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS game_invites (
+        id SERIAL PRIMARY KEY,
+        group_id INT NOT NULL REFERENCES game_groups(id) ON DELETE CASCADE,
+        user_id INT NOT NULL REFERENCES users(id),
+        title VARCHAR(120) NOT NULL,
+        body TEXT NOT NULL,
+        contact VARCHAR(80),
+        status VARCHAR(20) DEFAULT 'open',
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await execute(`CREATE INDEX IF NOT EXISTS idx_game_invites_group ON game_invites(group_id, created_at DESC)`);
   } else {
     try {
       await execute(`ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0`);
@@ -112,6 +142,35 @@ export async function migrate({ queryAll, queryOne, execute, isPostgres }) {
         body TEXT NOT NULL,
         link TEXT,
         is_read INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now'))
+      )
+    `);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS game_groups (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        description TEXT,
+        creator_id INTEGER NOT NULL REFERENCES users(id),
+        created_at TEXT DEFAULT (datetime('now'))
+      )
+    `);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS game_group_members (
+        group_id INTEGER NOT NULL REFERENCES game_groups(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        joined_at TEXT DEFAULT (datetime('now')),
+        PRIMARY KEY (group_id, user_id)
+      )
+    `);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS game_invites (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        group_id INTEGER NOT NULL REFERENCES game_groups(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        contact TEXT,
+        status TEXT DEFAULT 'open',
         created_at TEXT DEFAULT (datetime('now'))
       )
     `);

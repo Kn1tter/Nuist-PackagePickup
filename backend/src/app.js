@@ -10,6 +10,7 @@ import uploadRoutes from './routes/upload.js';
 import forumRoutes from './routes/forum.js';
 import resourceRoutes from './routes/resources.js';
 import inboxRoutes from './routes/inbox.js';
+import gamesRoutes from './routes/games.js';
 import { ready } from './db/index.js';
 
 const app = express();
@@ -53,6 +54,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/forum', forumRoutes);
 app.use('/api/resources', resourceRoutes);
 app.use('/api/inbox', inboxRoutes);
+app.use('/api/games', gamesRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

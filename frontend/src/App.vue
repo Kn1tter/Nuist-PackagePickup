@@ -27,6 +27,11 @@
           <RouterLink to="/">首页</RouterLink>
           <RouterLink to="/profile">我的</RouterLink>
         </template>
+        <template v-else-if="inGames">
+          <RouterLink to="/games">开黑</RouterLink>
+          <RouterLink to="/">首页</RouterLink>
+          <RouterLink to="/profile">我的</RouterLink>
+        </template>
         <template v-else-if="inPickup">
           <RouterLink to="/pickup">大厅</RouterLink>
           <RouterLink to="/post">发单</RouterLink>
@@ -37,6 +42,7 @@
           <RouterLink to="/forum">论坛</RouterLink>
           <RouterLink to="/pickup">代拿</RouterLink>
           <RouterLink to="/resources">资源</RouterLink>
+          <RouterLink to="/games">开黑</RouterLink>
           <RouterLink to="/profile">我的</RouterLink>
         </template>
       </nav>
@@ -55,6 +61,7 @@ const unread = ref(0)
 const showNav = computed(() => route.name !== 'login')
 const inForum = computed(() => String(route.path).startsWith('/forum'))
 const inResources = computed(() => String(route.path).startsWith('/resources'))
+const inGames = computed(() => String(route.path).startsWith('/games'))
 const inPickup = computed(
   () =>
     route.path === '/pickup' ||

@@ -3,7 +3,7 @@
     <section class="intro">
       <div>
         <h1>Make NUIST Better</h1>
-        <p class="muted">论坛 · 代拿 · 资源库 · 一站式校园互助</p>
+        <p class="muted">论坛 · 代拿 · 资源库 · 开黑 · 一站式校园互助</p>
       </div>
       <p class="contact muted">联系QQ:1440205803</p>
     </section>
@@ -25,6 +25,12 @@
         <span class="eyebrow">Resource Hub</span>
         <strong>资源库</strong>
         <p>课件、历年卷、软件与学习资料链接，分类浏览、一键打开。</p>
+      </RouterLink>
+
+      <RouterLink class="entry games" to="/games">
+        <span class="eyebrow">Party Up</span>
+        <strong>校内开黑</strong>
+        <p>自建游戏组，加入后发开黑邀请，找南信大的搭子。</p>
       </RouterLink>
     </div>
   </main>
@@ -115,6 +121,10 @@ h1 {
 
 .resources {
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(196, 214, 240, 0.5));
+}
+
+.games {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(230, 200, 230, 0.45));
 }
 
 @keyframes rise {
