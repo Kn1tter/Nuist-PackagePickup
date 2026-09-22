@@ -18,10 +18,17 @@ const origins = (process.env.FRONTEND_ORIGIN || '')
   .map((s) => s.trim())
   .filter(Boolean);
 
+// `*` + credentials 会被浏览器拒绝；`*` 时回显请求 Origin
+const corsOrigin = origins.includes('*')
+  ? true
+  : origins.length
+    ? origins
+    : undefined;
+
 app.use(
   cors(
-    origins.length
-      ? { origin: origins, credentials: true }
+    corsOrigin !== undefined
+      ? { origin: corsOrigin, credentials: true }
       : undefined
   )
 );
