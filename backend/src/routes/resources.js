@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { insert, queryAll, queryOne, execute } from '../db/index.js';
 import { isAdminUser } from '../db/migrate.js';
 import { auth } from '../middleware/auth.js';
+import { publicStudentId } from '../lib/mask.js';
 
 const router = Router();
 const CATEGORIES = ['课件', '历年卷', '软件工具', '学习资料', '其他'];
@@ -41,6 +42,7 @@ router.get('/', auth, async (req, res) => {
       categories: CATEGORIES,
       resources: rows.map((r) => ({
         ...r,
+        student_id: publicStudentId(r.student_id),
         can_delete: isAdminUser(me) || r.user_id === req.user.id,
       })),
     });

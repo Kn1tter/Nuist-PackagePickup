@@ -2,11 +2,16 @@ import { Router } from 'express';
 import { insert, queryAll, queryOne, execute } from '../db/index.js';
 import { isAdminUser } from '../db/migrate.js';
 import { auth } from '../middleware/auth.js';
+import { publicStudentId } from '../lib/mask.js';
 
 const router = Router();
 
 function boolAdmin(row) {
   return isAdminUser(row);
+}
+
+function maskUser(row) {
+  return { ...row, student_id: publicStudentId(row.student_id) };
 }
 
 router.get('/posts', auth, async (_req, res) => {
@@ -22,7 +27,7 @@ router.get('/posts', auth, async (_req, res) => {
     );
     res.json({
       posts: rows.map((r) => ({
-        ...r,
+        ...maskUser(r),
         reply_count: Number(r.reply_count || 0),
         body_preview: String(r.body || '').slice(0, 120),
       })),
@@ -56,11 +61,11 @@ router.get('/posts/:id', auth, async (req, res) => {
     const me = await queryOne('SELECT * FROM users WHERE id = ?', [req.user.id]);
     res.json({
       post: {
-        ...post,
+        ...maskUser(post),
         can_delete: boolAdmin(me) || post.user_id === req.user.id,
       },
       replies: replies.map((r) => ({
-        ...r,
+        ...maskUser(r),
         can_delete: boolAdmin(me) || r.user_id === req.user.id,
       })),
       viewer: { is_admin: boolAdmin(me) },
@@ -115,7 +120,7 @@ router.post('/posts/:id/replies', auth, async (req, res) => {
        WHERE r.id = ?`,
       [info.lastInsertRowid]
     );
-    res.status(201).json({ reply });
+    res.status(201).json({ reply: maskUser(reply) });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message || '回复失败' });

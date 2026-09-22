@@ -17,20 +17,65 @@
 
     <section class="code-box">
       <h2>取件码</h2>
-      <p v-if="!order.can_reveal_code && order.role !== 'courier'" class="muted-light">
-        {{ order.pickup_code ? `脱敏：${order.pickup_code}` : '接单后由骑手查看完整取件码' }}
-      </p>
-      <template v-else>
-        <p class="code">{{ revealed || order.pickup_code || '••••' }}</p>
-        <button
-          v-if="order.can_reveal_code && !revealed"
-          class="btn ghost light"
-          type="button"
-          @click="revealCode"
-        >
+      <template v-if="order.role === 'owner'">
+        <p class="code">{{ order.pickup_code }}</p>
+        <p class="muted-light">发单人可随时查看完整取件码</p>
+      </template>
+      <template v-else-if="order.can_reveal_code">
+        <p class="code">{{ displayCode }}</p>
+        <button v-if="!codeFullyShown" class="btn ghost light" type="button" @click="revealCode">
           查看完整取件码
         </button>
       </template>
+      <p v-else class="muted-light">
+        {{ order.pickup_code ? `脱敏：${order.pickup_code}` : '接单后由骑手查看完整取件码' }}
+      </p>
+    </section>
+
+    <section class="photos">
+      <h2>凭证照片</h2>
+      <div class="photo-grid">
+        <div class="photo-slot">
+          <p class="label">取件凭证</p>
+          <img v-if="order.pickup_photo_url" :src="photoSrc(order.pickup_photo_url)" alt="取件凭证" />
+          <p v-else class="muted">暂无</p>
+          <label
+            v-if="order.role === 'courier' && ['accepted', 'picked', 'delivered', 'done'].includes(order.status)"
+            class="btn ghost upload"
+          >
+            {{ uploading === 'pickup' ? '上传中…' : '上传取件照' }}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              hidden
+              :disabled="!!uploading"
+              @change="uploadPhoto('pickup', $event)"
+            />
+          </label>
+        </div>
+        <div class="photo-slot">
+          <p class="label">送达凭证</p>
+          <img
+            v-if="order.delivery_photo_url"
+            :src="photoSrc(order.delivery_photo_url)"
+            alt="送达凭证"
+          />
+          <p v-else class="muted">暂无</p>
+          <label
+            v-if="order.role === 'courier' && ['picked', 'delivered', 'done'].includes(order.status)"
+            class="btn ghost upload"
+          >
+            {{ uploading === 'delivery' ? '上传中…' : '上传送达照' }}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              hidden
+              :disabled="!!uploading"
+              @change="uploadPhoto('delivery', $event)"
+            />
+          </label>
+        </div>
+      </div>
     </section>
 
     <p v-if="error" class="err">{{ error }}</p>
@@ -90,7 +135,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { request } from '../api/request'
+import { apiBase, request } from '../api/request'
 
 const route = useRoute()
 const order = ref(null)
@@ -98,6 +143,7 @@ const loading = ref(true)
 const busy = ref(false)
 const error = ref('')
 const revealed = ref('')
+const uploading = ref('')
 
 const map = {
   pending: '待接单',
@@ -113,6 +159,17 @@ const roleMap = { owner: '发单人', courier: '接单人', other: '访客' }
 const statusText = computed(() => map[order.value?.status] || '')
 const sizeText = computed(() => sizeMap[order.value?.package_size] || '')
 const roleText = computed(() => roleMap[order.value?.role] || '')
+const displayCode = computed(() => revealed.value || order.value?.pickup_code || '••••')
+const codeFullyShown = computed(() => {
+  const c = String(displayCode.value || '')
+  return c.length > 0 && !c.includes('****') && c !== '••••'
+})
+
+function photoSrc(url) {
+  if (!url) return ''
+  if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) return url
+  return `${apiBase}${url}`
+}
 
 async function load() {
   loading.value = true
@@ -120,6 +177,7 @@ async function load() {
   try {
     const data = await request(`/orders/${route.params.id}`)
     order.value = data.order
+    if (data.order?.role === 'owner') revealed.value = data.order.pickup_code
   } catch (e) {
     error.value = e.message
   } finally {
@@ -148,6 +206,27 @@ async function revealCode() {
     order.value = { ...order.value, ...data.order, pickup_code: data.order.pickup_code }
   } catch (e) {
     error.value = e.message
+  }
+}
+
+async function uploadPhoto(kind, ev) {
+  const file = ev.target.files?.[0]
+  ev.target.value = ''
+  if (!file) return
+  uploading.value = kind
+  error.value = ''
+  try {
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('order_id', String(route.params.id))
+    fd.append('kind', kind)
+    const data = await request('/upload/order-photo', { method: 'POST', body: fd })
+    if (kind === 'pickup') order.value = { ...order.value, pickup_photo_url: data.url }
+    else order.value = { ...order.value, delivery_photo_url: data.url }
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    uploading.value = ''
   }
 }
 
@@ -234,6 +313,8 @@ dd {
 
 .muted-light {
   opacity: 0.8;
+  margin: 0;
+  font-size: 0.85rem;
 }
 
 .code {
@@ -248,9 +329,58 @@ dd {
   border-color: rgba(231, 245, 238, 0.35);
 }
 
+.photos {
+  margin-bottom: 1rem;
+}
+
+.photos h2 {
+  margin: 0 0 0.65rem;
+  font-size: 1rem;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.photo-slot {
+  padding: 0.75rem;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.7);
+  display: grid;
+  gap: 0.5rem;
+}
+
+.photo-slot .label {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.photo-slot img {
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.upload {
+  justify-self: start;
+  cursor: pointer;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
+}
+
+@media (max-width: 560px) {
+  .photo-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

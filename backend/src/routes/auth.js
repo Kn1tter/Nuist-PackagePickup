@@ -4,13 +4,21 @@ import jwt from 'jsonwebtoken';
 import { insert, queryOne } from '../db/index.js';
 import { isAdminUser, promoteIfAdminStudent, syncAdmins } from '../db/migrate.js';
 import { auth } from '../middleware/auth.js';
+import { getJwtSecret } from '../lib/jwt.js';
+import { rateLimit } from '../lib/rateLimit.js';
 
 const router = Router();
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 25,
+  message: '登录/注册过于频繁，请 15 分钟后再试',
+});
 
 function signToken(user) {
   return jwt.sign(
     { id: user.id, student_id: user.student_id },
-    process.env.JWT_SECRET || 'dev-secret',
+    getJwtSecret(),
     { expiresIn: '7d' }
   );
 }
@@ -31,7 +39,7 @@ function isValidStudentId(id) {
   return /^\d{8,12}$/.test(String(id || '').trim());
 }
 
-router.post('/register', async (req, res) => {
+router.post('/register', authLimiter, async (req, res) => {
   try {
     const { student_id, phone, password, nickname } = req.body || {};
     if (!isValidStudentId(student_id)) {
@@ -67,7 +75,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
   try {
     const { student_id, password } = req.body || {};
     const user = await queryOne('SELECT * FROM users WHERE student_id = ?', [student_id]);

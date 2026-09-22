@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { getJwtSecret } from '../lib/jwt.js';
 
 export function auth(req, res, next) {
   const header = req.headers.authorization || '';
@@ -7,7 +8,7 @@ export function auth(req, res, next) {
     return res.status(401).json({ error: '未登录' });
   }
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret');
+    const payload = jwt.verify(token, getJwtSecret());
     req.user = { id: payload.id, student_id: payload.student_id };
     next();
   } catch {
@@ -20,7 +21,7 @@ export function optionalAuth(req, _res, next) {
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (token) {
     try {
-      const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret');
+      const payload = jwt.verify(token, getJwtSecret());
       req.user = { id: payload.id, student_id: payload.student_id };
     } catch {
       /* ignore */

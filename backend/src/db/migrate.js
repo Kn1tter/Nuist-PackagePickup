@@ -247,17 +247,7 @@ export async function syncAdmins({
       [sid]
     );
   }
-
-  // 代拿/论坛共用 users 表：始终把最早注册的账号设为管理员
-  const first = await q1(`SELECT id FROM users ORDER BY id ASC LIMIT 1`);
-  if (first) {
-    await exec(
-      pg()
-        ? `UPDATE users SET is_admin = TRUE WHERE id = ?`
-        : `UPDATE users SET is_admin = 1 WHERE id = ?`,
-      [first.id]
-    );
-  }
+  // 仅通过 ADMIN_STUDENT_IDS 提升管理员，不再自动把首个注册用户设为管理员
 }
 
 export function isAdminUser(user) {

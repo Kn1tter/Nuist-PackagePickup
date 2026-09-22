@@ -1,8 +1,10 @@
 const TOKEN_KEY = 'nuist_pickup_token'
 const USER_KEY = 'nuist_pickup_user'
 
-/** 生产环境填 Render 后端地址，如 https://xxx.onrender.com；本地留空走 Vite 代理 */
+/** 生产环境填后端地址，如 https://xxx.vercel.app；本地留空走 Vite 代理 */
 const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/$/, '')
+
+export const apiBase = API_BASE
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY)

@@ -2,17 +2,9 @@ import { Router } from 'express';
 import { insert, queryAll, queryOne, execute, isPostgres } from '../db/index.js';
 import { isAdminUser } from '../db/migrate.js';
 import { auth } from '../middleware/auth.js';
+import { notifyUser } from '../lib/notify.js';
 
 const router = Router();
-
-async function notifyUser(userId, title, body, link = null) {
-  await insert(`INSERT INTO messages (user_id, title, body, link) VALUES (?, ?, ?, ?)`, [
-    userId,
-    title,
-    body,
-    link,
-  ]);
-}
 
 async function notifyAdmins(title, body, link = null) {
   const admins = await queryAll(

@@ -13,6 +13,10 @@ import inboxRoutes from './routes/inbox.js';
 import gamesRoutes from './routes/games.js';
 import scheduleRoutes from './routes/schedule.js';
 import { ready } from './db/index.js';
+import { getJwtSecret } from './lib/jwt.js';
+
+// Fail fast if production secret is missing/weak
+getJwtSecret();
 
 const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

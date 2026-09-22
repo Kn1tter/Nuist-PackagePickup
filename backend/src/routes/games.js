@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { insert, queryAll, queryOne, execute } from '../db/index.js';
 import { isAdminUser } from '../db/migrate.js';
 import { auth } from '../middleware/auth.js';
+import { publicStudentId } from '../lib/mask.js';
 
 const router = Router();
 
@@ -111,7 +112,10 @@ router.get('/groups/:id', auth, async (req, res) => {
 
     res.json({
       group: { ...group, joined, can_manage: canManage },
-      members,
+      members: members.map((m) => ({
+        ...m,
+        student_id: publicStudentId(m.student_id),
+      })),
       invites: invites.map((i) => ({
         ...i,
         can_delete: canManage || Number(i.user_id) === Number(req.user.id) || isAdminUser(me),
