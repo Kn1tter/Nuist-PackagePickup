@@ -23,6 +23,18 @@ export async function migrate({ queryAll, queryOne, execute, isPostgres }) {
     `);
     await execute(`CREATE INDEX IF NOT EXISTS idx_forum_posts_created ON forum_posts(created_at DESC)`);
     await execute(`CREATE INDEX IF NOT EXISTS idx_forum_replies_post ON forum_replies(post_id)`);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS resources (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id),
+        title VARCHAR(120) NOT NULL,
+        description TEXT,
+        url TEXT NOT NULL,
+        category VARCHAR(40) DEFAULT '其他',
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await execute(`CREATE INDEX IF NOT EXISTS idx_resources_created ON resources(created_at DESC)`);
   } else {
     try {
       await execute(`ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0`);
@@ -44,6 +56,17 @@ export async function migrate({ queryAll, queryOne, execute, isPostgres }) {
         post_id INTEGER NOT NULL REFERENCES forum_posts(id) ON DELETE CASCADE,
         user_id INTEGER NOT NULL REFERENCES users(id),
         body TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now'))
+      )
+    `);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS resources (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        title TEXT NOT NULL,
+        description TEXT,
+        url TEXT NOT NULL,
+        category TEXT DEFAULT '其他',
         created_at TEXT DEFAULT (datetime('now'))
       )
     `);

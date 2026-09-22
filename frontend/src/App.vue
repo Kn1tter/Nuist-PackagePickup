@@ -12,6 +12,12 @@
           <RouterLink to="/">首页</RouterLink>
           <RouterLink to="/profile">我的</RouterLink>
         </template>
+        <template v-else-if="inResources">
+          <RouterLink to="/resources">资源</RouterLink>
+          <RouterLink to="/resources/new">上传</RouterLink>
+          <RouterLink to="/">首页</RouterLink>
+          <RouterLink to="/profile">我的</RouterLink>
+        </template>
         <template v-else-if="inPickup">
           <RouterLink to="/pickup">大厅</RouterLink>
           <RouterLink to="/post">发单</RouterLink>
@@ -21,6 +27,7 @@
         <template v-else>
           <RouterLink to="/forum">论坛</RouterLink>
           <RouterLink to="/pickup">代拿</RouterLink>
+          <RouterLink to="/resources">资源</RouterLink>
           <RouterLink to="/profile">我的</RouterLink>
         </template>
       </nav>
@@ -36,6 +43,7 @@ import { useRoute } from 'vue-router'
 const route = useRoute()
 const showNav = computed(() => route.name !== 'login')
 const inForum = computed(() => String(route.path).startsWith('/forum'))
+const inResources = computed(() => String(route.path).startsWith('/resources'))
 const inPickup = computed(
   () =>
     route.path === '/pickup' ||

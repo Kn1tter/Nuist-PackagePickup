@@ -2,7 +2,7 @@
   <main class="hub">
     <section class="intro">
       <h1>Make NUIST Better</h1>
-      <p class="muted">选一个入口 · 论坛交流反馈 · 快递互助代拿</p>
+      <p class="muted">论坛 · 代拿 · 资源库 · 一站式校园互助</p>
     </section>
 
     <div class="entries">
@@ -16,6 +16,12 @@
         <span class="eyebrow">Package Pickup</span>
         <strong>代拿快递</strong>
         <p>发单、接单、线下结算；取件码仅接单后可见。</p>
+      </RouterLink>
+
+      <RouterLink class="entry resources" to="/resources">
+        <span class="eyebrow">Resource Hub</span>
+        <strong>资源库</strong>
+        <p>课件、历年卷、软件与学习资料链接，分类浏览、一键打开。</p>
       </RouterLink>
     </div>
   </main>
@@ -86,13 +92,15 @@ h1 {
 }
 
 .forum {
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(243, 215, 184, 0.35));
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(243, 215, 184, 0.35));
 }
 
 .pickup {
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(184, 224, 200, 0.45));
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(184, 224, 200, 0.45));
+}
+
+.resources {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(196, 214, 240, 0.5));
 }
 
 @keyframes rise {

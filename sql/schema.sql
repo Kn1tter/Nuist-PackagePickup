@@ -58,11 +58,22 @@ CREATE TABLE IF NOT EXISTS forum_replies (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS resources (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id),
+  title VARCHAR(120) NOT NULL,
+  description TEXT,
+  url TEXT NOT NULL,
+  category VARCHAR(40) DEFAULT '其他',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
 CREATE INDEX IF NOT EXISTS idx_orders_courier ON orders(courier_id);
 CREATE INDEX IF NOT EXISTS idx_forum_posts_created ON forum_posts(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_forum_replies_post ON forum_replies(post_id);
+CREATE INDEX IF NOT EXISTS idx_resources_created ON resources(created_at DESC);
 
 -- 可选：把指定学号设为管理员（把学号改成你的）
 -- UPDATE users SET is_admin = TRUE WHERE student_id = '你的学号';
