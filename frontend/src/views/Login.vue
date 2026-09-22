@@ -1,7 +1,7 @@
 <template>
   <main class="panel auth">
     <h1>{{ mode === 'login' ? '登录' : '注册' }}</h1>
-    <p class="muted">学号登录 · 每天几十单的校园互助版</p>
+    <p class="muted">学号登录 · Make NUIST Better</p>
 
     <form @submit.prevent="submit">
       <div class="field">
