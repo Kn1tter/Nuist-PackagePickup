@@ -2,6 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { insert, queryOne } from '../db/index.js';
+import { isAdminUser, promoteIfAdminStudent, syncAdmins } from '../db/migrate.js';
 import { auth } from '../middleware/auth.js';
 
 const router = Router();
@@ -21,6 +22,7 @@ function publicUser(row) {
     phone: row.phone,
     nickname: row.nickname,
     credit_score: row.credit_score,
+    is_admin: isAdminUser(row),
     created_at: row.created_at,
   };
 }
@@ -55,7 +57,10 @@ router.post('/register', async (req, res) => {
     );
 
     const user = await queryOne('SELECT * FROM users WHERE id = ?', [info.lastInsertRowid]);
-    res.status(201).json({ token: signToken(user), user: publicUser(user) });
+    await promoteIfAdminStudent(user.student_id);
+    await syncAdmins();
+    const fresh = await queryOne('SELECT * FROM users WHERE id = ?', [user.id]);
+    res.status(201).json({ token: signToken(fresh), user: publicUser(fresh) });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message || '注册失败' });
@@ -69,7 +74,10 @@ router.post('/login', async (req, res) => {
     if (!user || !bcrypt.compareSync(String(password || ''), user.password_hash)) {
       return res.status(401).json({ error: '学号或密码错误' });
     }
-    res.json({ token: signToken(user), user: publicUser(user) });
+    await promoteIfAdminStudent(user.student_id);
+    await syncAdmins();
+    const fresh = await queryOne('SELECT * FROM users WHERE id = ?', [user.id]);
+    res.json({ token: signToken(fresh), user: publicUser(fresh) });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message || '登录失败' });

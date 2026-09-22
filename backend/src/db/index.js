@@ -30,6 +30,7 @@ async function initSqlite() {
       password_hash TEXT NOT NULL,
       nickname TEXT,
       credit_score INTEGER DEFAULT 100,
+      is_admin INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now'))
     );
     CREATE TABLE IF NOT EXISTS orders (
@@ -77,6 +78,7 @@ async function initPg() {
       password_hash TEXT NOT NULL,
       nickname VARCHAR(50),
       credit_score INT DEFAULT 100,
+      is_admin BOOLEAN DEFAULT FALSE,
       created_at TIMESTAMP DEFAULT NOW()
     );
     CREATE TABLE IF NOT EXISTS orders (
@@ -110,34 +112,53 @@ async function initPg() {
   `);
 }
 
-export const ready = (async () => {
-  if (usePg) await initPg();
-  else await initSqlite();
-  console.log(`[db] using ${usePg ? 'PostgreSQL' : 'SQLite'}`);
-})();
-
-export async function queryAll(sql, params = []) {
-  await ready;
+function runAll(sql, params = []) {
   if (usePg) {
-    const { rows } = await pool.query(toPg(sql), params);
-    return rows;
+    return pool.query(toPg(sql), params).then(({ rows }) => rows);
   }
-  return sqlite.prepare(sql).all(...params);
+  return Promise.resolve(sqlite.prepare(sql).all(...params));
 }
 
-export async function queryOne(sql, params = []) {
-  const rows = await queryAll(sql, params);
+async function runOne(sql, params = []) {
+  const rows = await runAll(sql, params);
   return rows[0];
 }
 
-export async function execute(sql, params = []) {
-  await ready;
+async function runExec(sql, params = []) {
   if (usePg) {
     const { rowCount } = await pool.query(toPg(sql), params);
     return { changes: rowCount || 0 };
   }
   const info = sqlite.prepare(sql).run(...params);
   return { changes: info.changes, lastInsertRowid: Number(info.lastInsertRowid) };
+}
+
+export const ready = (async () => {
+  if (usePg) await initPg();
+  else await initSqlite();
+  const { migrate } = await import('./migrate.js');
+  await migrate({
+    queryAll: runAll,
+    queryOne: runOne,
+    execute: runExec,
+    isPostgres: () => usePg,
+  });
+  console.log(`[db] using ${usePg ? 'PostgreSQL' : 'SQLite'}`);
+})();
+
+export async function queryAll(sql, params = []) {
+  await ready;
+  return runAll(sql, params);
+}
+
+export async function queryOne(sql, params = []) {
+  await ready;
+  return runOne(sql, params);
+}
+
+export async function execute(sql, params = []) {
+  await ready;
+  return runExec(sql, params);
 }
 
 /** INSERT … 返回新行 id */

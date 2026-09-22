@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import authRoutes from './routes/auth.js';
 import orderRoutes from './routes/orders.js';
 import uploadRoutes from './routes/upload.js';
+import forumRoutes from './routes/forum.js';
 import { ready } from './db/index.js';
 
 const app = express();
@@ -47,6 +48,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/forum', forumRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

@@ -2,7 +2,11 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { getToken } from '../api/request'
 
 const routes = [
-  { path: '/', name: 'orders', component: () => import('../views/Orders.vue') },
+  { path: '/', name: 'hub', component: () => import('../views/Hub.vue') },
+  { path: '/forum', name: 'forum', component: () => import('../views/Forum.vue') },
+  { path: '/forum/new', name: 'forum-new', component: () => import('../views/ForumNew.vue') },
+  { path: '/forum/:id', name: 'forum-post', component: () => import('../views/ForumPost.vue') },
+  { path: '/pickup', name: 'orders', component: () => import('../views/Orders.vue') },
   { path: '/post', name: 'home', component: () => import('../views/Home.vue') },
   { path: '/orders/:id', name: 'detail', component: () => import('../views/OrderDetail.vue') },
   { path: '/profile', name: 'profile', component: () => import('../views/Profile.vue') },
@@ -17,7 +21,7 @@ const router = createRouter({
 router.beforeEach((to) => {
   const loggedIn = !!getToken()
   if (!to.meta.guest && !loggedIn) return { name: 'login', query: { redirect: to.fullPath } }
-  if (to.meta.guest && loggedIn) return { name: 'orders' }
+  if (to.meta.guest && loggedIn) return { name: 'hub' }
   return true
 })
 

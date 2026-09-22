@@ -2,13 +2,27 @@
   <div class="shell">
     <header class="top">
       <RouterLink to="/" class="brand-block">
-        <div class="brand">南信大代取</div>
-        <p class="muted tagline">校园快递互助 · 线下结算</p>
+        <div class="brand">南信大互助</div>
+        <p class="muted tagline">Make NUIST Better</p>
       </RouterLink>
       <nav v-if="showNav" class="nav">
-        <RouterLink to="/">大厅</RouterLink>
-        <RouterLink to="/post">发单</RouterLink>
-        <RouterLink to="/profile">我的</RouterLink>
+        <template v-if="inForum">
+          <RouterLink to="/forum">论坛</RouterLink>
+          <RouterLink to="/forum/new">发帖</RouterLink>
+          <RouterLink to="/">首页</RouterLink>
+          <RouterLink to="/profile">我的</RouterLink>
+        </template>
+        <template v-else-if="inPickup">
+          <RouterLink to="/pickup">大厅</RouterLink>
+          <RouterLink to="/post">发单</RouterLink>
+          <RouterLink to="/">首页</RouterLink>
+          <RouterLink to="/profile">我的</RouterLink>
+        </template>
+        <template v-else>
+          <RouterLink to="/forum">论坛</RouterLink>
+          <RouterLink to="/pickup">代拿</RouterLink>
+          <RouterLink to="/profile">我的</RouterLink>
+        </template>
       </nav>
     </header>
     <RouterView />
@@ -21,6 +35,13 @@ import { useRoute } from 'vue-router'
 
 const route = useRoute()
 const showNav = computed(() => route.name !== 'login')
+const inForum = computed(() => String(route.path).startsWith('/forum'))
+const inPickup = computed(
+  () =>
+    route.path === '/pickup' ||
+    route.path === '/post' ||
+    String(route.path).startsWith('/orders')
+)
 </script>
 
 <style scoped>
@@ -40,7 +61,8 @@ const showNav = computed(() => route.name !== 'login')
 
 .nav {
   display: flex;
-  gap: 0.85rem;
+  flex-wrap: wrap;
+  gap: 0.55rem;
   padding: 0.45rem;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.7);

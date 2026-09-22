@@ -1,7 +1,10 @@
 <template>
   <main class="panel profile">
     <h1>我的</h1>
-    <p v-if="user" class="muted">学号 {{ user.student_id }} · 信用 {{ user.credit_score }}</p>
+    <p v-if="user" class="muted">
+      学号 {{ user.student_id }} · 信用 {{ user.credit_score }}
+      <span v-if="user.is_admin" class="admin-tag">管理员</span>
+    </p>
 
     <div class="stats" v-if="user">
       <div>
@@ -33,7 +36,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import OrderCard from '../components/OrderCard.vue'
-import { clearSession, getUser, request } from '../api/request'
+import { clearSession, getToken, getUser, request, setSession } from '../api/request'
 
 const router = useRouter()
 const user = ref(getUser())
@@ -46,6 +49,7 @@ async function refreshMe() {
   try {
     const data = await request('/auth/me')
     user.value = data.user
+    setSession(getToken(), data.user)
   } catch {
     /* ignore */
   }
@@ -136,5 +140,16 @@ h1 {
 
 .logout {
   margin-top: 1.4rem;
+}
+
+.admin-tag {
+  display: inline-block;
+  margin-left: 0.45rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(196, 92, 38, 0.15);
+  color: var(--accent-2);
+  font-size: 0.78rem;
+  font-weight: 700;
 }
 </style>

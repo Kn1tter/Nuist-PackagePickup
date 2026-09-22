@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   nickname VARCHAR(50),
   credit_score INT DEFAULT 100,
+  is_admin BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -41,6 +42,27 @@ CREATE TABLE IF NOT EXISTS reviews (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS forum_posts (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id),
+  title VARCHAR(120) NOT NULL,
+  body TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS forum_replies (
+  id SERIAL PRIMARY KEY,
+  post_id INT NOT NULL REFERENCES forum_posts(id) ON DELETE CASCADE,
+  user_id INT NOT NULL REFERENCES users(id),
+  body TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
 CREATE INDEX IF NOT EXISTS idx_orders_courier ON orders(courier_id);
+CREATE INDEX IF NOT EXISTS idx_forum_posts_created ON forum_posts(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_forum_replies_post ON forum_replies(post_id);
+
+-- 可选：把指定学号设为管理员（把学号改成你的）
+-- UPDATE users SET is_admin = TRUE WHERE student_id = '你的学号';
