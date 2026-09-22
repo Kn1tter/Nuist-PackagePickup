@@ -1,8 +1,11 @@
 <template>
   <main class="hub">
     <section class="intro">
-      <h1>Make NUIST Better</h1>
-      <p class="muted">论坛 · 代拿 · 资源库 · 一站式校园互助</p>
+      <div>
+        <h1>Make NUIST Better</h1>
+        <p class="muted">论坛 · 代拿 · 资源库 · 一站式校园互助</p>
+      </div>
+      <p class="contact muted">联系QQ:1440205803</p>
     </section>
 
     <div class="entries">
@@ -33,6 +36,10 @@
 }
 
 .intro {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
   margin-bottom: 1.25rem;
 }
 
@@ -42,8 +49,15 @@ h1 {
   font-size: clamp(2rem, 5vw, 2.8rem);
 }
 
-.intro p {
+.intro > div p {
   margin: 0.4rem 0 0;
+}
+
+.contact {
+  margin: 0;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .entries {
@@ -115,6 +129,11 @@ h1 {
 }
 
 @media (max-width: 700px) {
+  .intro {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .entries {
     grid-template-columns: 1fr;
   }
