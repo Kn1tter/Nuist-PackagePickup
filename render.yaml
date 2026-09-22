@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: nuist-packagepickup-api
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: NODE_VERSION
+        value: "20"
