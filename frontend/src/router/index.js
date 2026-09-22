@@ -12,6 +12,8 @@ const routes = [
   { path: '/post', name: 'home', component: () => import('../views/Home.vue') },
   { path: '/orders/:id', name: 'detail', component: () => import('../views/OrderDetail.vue') },
   { path: '/profile', name: 'profile', component: () => import('../views/Profile.vue') },
+  { path: '/feedback', name: 'feedback', component: () => import('../views/Feedback.vue') },
+  { path: '/messages', name: 'messages', component: () => import('../views/Messages.vue') },
   { path: '/login', name: 'login', component: () => import('../views/Login.vue'), meta: { guest: true } },
 ]
 

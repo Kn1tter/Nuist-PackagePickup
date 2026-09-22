@@ -35,6 +35,29 @@ export async function migrate({ queryAll, queryOne, execute, isPostgres }) {
       )
     `);
     await execute(`CREATE INDEX IF NOT EXISTS idx_resources_created ON resources(created_at DESC)`);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS feedbacks (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id),
+        content TEXT NOT NULL,
+        status VARCHAR(20) DEFAULT 'open',
+        admin_reply TEXT,
+        created_at TIMESTAMP DEFAULT NOW(),
+        replied_at TIMESTAMP
+      )
+    `);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id),
+        title VARCHAR(120) NOT NULL,
+        body TEXT NOT NULL,
+        link TEXT,
+        is_read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await execute(`CREATE INDEX IF NOT EXISTS idx_messages_user ON messages(user_id, is_read, created_at DESC)`);
   } else {
     try {
       await execute(`ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0`);
@@ -67,6 +90,28 @@ export async function migrate({ queryAll, queryOne, execute, isPostgres }) {
         description TEXT,
         url TEXT NOT NULL,
         category TEXT DEFAULT '其他',
+        created_at TEXT DEFAULT (datetime('now'))
+      )
+    `);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS feedbacks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        content TEXT NOT NULL,
+        status TEXT DEFAULT 'open',
+        admin_reply TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        replied_at TEXT
+      )
+    `);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        link TEXT,
+        is_read INTEGER DEFAULT 0,
         created_at TEXT DEFAULT (datetime('now'))
       )
     `);
