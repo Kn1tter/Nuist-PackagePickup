@@ -80,21 +80,15 @@ export async function syncAdmins({
     );
   }
 
-  const anyAdmin = await q1(
-    pg()
-      ? `SELECT id FROM users WHERE is_admin = TRUE LIMIT 1`
-      : `SELECT id FROM users WHERE is_admin = 1 LIMIT 1`
-  );
-  if (!anyAdmin) {
-    const first = await q1(`SELECT id FROM users ORDER BY id ASC LIMIT 1`);
-    if (first) {
-      await exec(
-        pg()
-          ? `UPDATE users SET is_admin = TRUE WHERE id = ?`
-          : `UPDATE users SET is_admin = 1 WHERE id = ?`,
-        [first.id]
-      );
-    }
+  // 代拿/论坛共用 users 表：始终把最早注册的账号设为管理员
+  const first = await q1(`SELECT id FROM users ORDER BY id ASC LIMIT 1`);
+  if (first) {
+    await exec(
+      pg()
+        ? `UPDATE users SET is_admin = TRUE WHERE id = ?`
+        : `UPDATE users SET is_admin = 1 WHERE id = ?`,
+      [first.id]
+    );
   }
 }
 
