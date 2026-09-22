@@ -1,6 +1,6 @@
 <template>
-  <div class="shell">
-    <header class="top">
+  <div class="shell" :class="{ bare: isBare }">
+    <header v-if="!isBare" class="top">
       <div class="top-row">
         <RouterLink to="/" class="brand-block">
           <div class="brand">南信大互助</div>
@@ -32,6 +32,11 @@
           <RouterLink to="/">首页</RouterLink>
           <RouterLink to="/profile">我的</RouterLink>
         </template>
+        <template v-else-if="inSchedule">
+          <RouterLink to="/schedule">课表</RouterLink>
+          <RouterLink to="/">首页</RouterLink>
+          <RouterLink to="/profile">我的</RouterLink>
+        </template>
         <template v-else-if="inPickup">
           <RouterLink to="/pickup">大厅</RouterLink>
           <RouterLink to="/post">发单</RouterLink>
@@ -43,6 +48,7 @@
           <RouterLink to="/pickup">代拿</RouterLink>
           <RouterLink to="/resources">资源</RouterLink>
           <RouterLink to="/games">开黑</RouterLink>
+          <RouterLink to="/schedule">课表</RouterLink>
           <RouterLink to="/profile">我的</RouterLink>
         </template>
       </nav>
@@ -58,10 +64,12 @@ import { getToken, request } from './api/request'
 
 const route = useRoute()
 const unread = ref(0)
-const showNav = computed(() => route.name !== 'login')
+const isBare = computed(() => !!route.meta.bare)
+const showNav = computed(() => route.name !== 'login' && !isBare.value)
 const inForum = computed(() => String(route.path).startsWith('/forum'))
 const inResources = computed(() => String(route.path).startsWith('/resources'))
 const inGames = computed(() => String(route.path).startsWith('/games'))
+const inSchedule = computed(() => String(route.path).startsWith('/schedule'))
 const inPickup = computed(
   () =>
     route.path === '/pickup' ||
@@ -191,5 +199,12 @@ onUnmounted(() => {
     opacity: 1;
     transform: none;
   }
+}
+
+.shell.bare {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
 }
 </style>

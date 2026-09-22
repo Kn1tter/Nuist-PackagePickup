@@ -88,6 +88,27 @@ export async function migrate({ queryAll, queryOne, execute, isPostgres }) {
       )
     `);
     await execute(`CREATE INDEX IF NOT EXISTS idx_game_invites_group ON game_invites(group_id, created_at DESC)`);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS schedule_courses (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name VARCHAR(80) NOT NULL,
+        location VARCHAR(120),
+        day_of_week INT NOT NULL,
+        start_time VARCHAR(8) NOT NULL,
+        end_time VARCHAR(8) NOT NULL,
+        weeks VARCHAR(80) DEFAULT '1-16',
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS schedule_settings (
+        user_id INT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        term_start_date VARCHAR(20),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await execute(`CREATE INDEX IF NOT EXISTS idx_schedule_user ON schedule_courses(user_id)`);
   } else {
     try {
       await execute(`ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0`);
@@ -172,6 +193,26 @@ export async function migrate({ queryAll, queryOne, execute, isPostgres }) {
         contact TEXT,
         status TEXT DEFAULT 'open',
         created_at TEXT DEFAULT (datetime('now'))
+      )
+    `);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS schedule_courses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        location TEXT,
+        day_of_week INTEGER NOT NULL,
+        start_time TEXT NOT NULL,
+        end_time TEXT NOT NULL,
+        weeks TEXT DEFAULT '1-16',
+        created_at TEXT DEFAULT (datetime('now'))
+      )
+    `);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS schedule_settings (
+        user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        term_start_date TEXT,
+        updated_at TEXT DEFAULT (datetime('now'))
       )
     `);
   }

@@ -3,7 +3,7 @@
     <section class="intro">
       <div>
         <h1>Make NUIST Better</h1>
-        <p class="muted">论坛 · 代拿 · 资源库 · 开黑 · 一站式校园互助</p>
+        <p class="muted">论坛 · 代拿 · 资源库 · 开黑 · 课表 · 一站式校园互助</p>
       </div>
       <p class="contact muted">联系QQ:1440205803</p>
     </section>
@@ -31,6 +31,12 @@
         <span class="eyebrow">Party Up</span>
         <strong>校内开黑</strong>
         <p>自建游戏组，加入后发开黑邀请，找南信大的搭子。</p>
+      </RouterLink>
+
+      <RouterLink class="entry schedule" to="/schedule">
+        <span class="eyebrow">Timetable</span>
+        <strong>我的课表</strong>
+        <p>录入课表后按日生成网页悬浮窗，一眼看到时间、课程与楼号。</p>
       </RouterLink>
     </div>
   </main>
@@ -125,6 +131,10 @@ h1 {
 
 .games {
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(230, 200, 230, 0.45));
+}
+
+.schedule {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(180, 230, 220, 0.5));
 }
 
 @keyframes rise {

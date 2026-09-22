@@ -10,6 +10,13 @@ const routes = [
   { path: '/resources/new', name: 'resource-new', component: () => import('../views/ResourceNew.vue') },
   { path: '/games', name: 'games', component: () => import('../views/Games.vue') },
   { path: '/games/:id', name: 'game-group', component: () => import('../views/GameGroup.vue') },
+  { path: '/schedule', name: 'schedule', component: () => import('../views/Schedule.vue') },
+  {
+    path: '/schedule/float',
+    name: 'schedule-float',
+    component: () => import('../views/ScheduleFloat.vue'),
+    meta: { bare: true },
+  },
   { path: '/pickup', name: 'orders', component: () => import('../views/Orders.vue') },
   { path: '/post', name: 'home', component: () => import('../views/Home.vue') },
   { path: '/orders/:id', name: 'detail', component: () => import('../views/OrderDetail.vue') },
