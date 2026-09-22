@@ -121,6 +121,16 @@ export async function migrate({ queryAll, queryOne, execute, isPostgres }) {
     await execute(
       `CREATE INDEX IF NOT EXISTS idx_game_chat_group ON game_chat_messages(group_id, id DESC)`
     );
+    // 补齐：创建者必须是成员
+    await execute(`
+      INSERT INTO game_group_members (group_id, user_id)
+      SELECT g.id, g.creator_id
+      FROM game_groups g
+      WHERE NOT EXISTS (
+        SELECT 1 FROM game_group_members m
+        WHERE m.group_id = g.id AND m.user_id = g.creator_id
+      )
+    `);
   } else {
     try {
       await execute(`ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0`);
@@ -239,6 +249,15 @@ export async function migrate({ queryAll, queryOne, execute, isPostgres }) {
     await execute(
       `CREATE INDEX IF NOT EXISTS idx_game_chat_group ON game_chat_messages(group_id, id DESC)`
     );
+    await execute(`
+      INSERT INTO game_group_members (group_id, user_id)
+      SELECT g.id, g.creator_id
+      FROM game_groups g
+      WHERE NOT EXISTS (
+        SELECT 1 FROM game_group_members m
+        WHERE m.group_id = g.id AND m.user_id = g.creator_id
+      )
+    `);
   }
 
   await syncAdmins({ queryOne, execute, isPostgres });

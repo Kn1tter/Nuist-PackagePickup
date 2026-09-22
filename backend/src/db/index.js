@@ -161,13 +161,22 @@ export async function execute(sql, params = []) {
   return runExec(sql, params);
 }
 
-/** INSERT … 返回新行 id */
+/** INSERT … 返回新行 id（无 id 列的表则只执行插入） */
 export async function insert(sql, params = []) {
   await ready;
   if (usePg) {
-    const text = toPg(`${sql} RETURNING id`);
-    const { rows } = await pool.query(text, params);
-    return { lastInsertRowid: rows[0].id, changes: 1 };
+    const base = toPg(sql);
+    try {
+      const { rows } = await pool.query(`${base} RETURNING id`, params);
+      return { lastInsertRowid: rows[0]?.id ?? null, changes: 1 };
+    } catch (e) {
+      // 复合主键等表没有 id 列（42703 = undefined_column）
+      if (e.code === '42703') {
+        const result = await pool.query(base, params);
+        return { lastInsertRowid: null, changes: result.rowCount || 1 };
+      }
+      throw e;
+    }
   }
   const info = sqlite.prepare(sql).run(...params);
   return { changes: info.changes, lastInsertRowid: Number(info.lastInsertRowid) };

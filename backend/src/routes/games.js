@@ -15,6 +15,21 @@ async function isMember(groupId, userId) {
   );
 }
 
+/** 确保创建者在成员表中（修复历史数据 / 创建失败残留） */
+async function ensureCreatorMember(group) {
+  if (!group?.id || group.creator_id == null) return;
+  const exists = await isMember(group.id, group.creator_id);
+  if (exists) return;
+  try {
+    await insert(`INSERT INTO game_group_members (group_id, user_id) VALUES (?, ?)`, [
+      group.id,
+      group.creator_id,
+    ]);
+  } catch {
+    /* 并发下可能已存在 */
+  }
+}
+
 /** 游戏组列表 */
 router.get('/groups', auth, async (req, res) => {
   try {
@@ -37,7 +52,8 @@ router.get('/groups', auth, async (req, res) => {
         ...g,
         member_count: Number(g.member_count || 0),
         open_invites: Number(g.open_invites || 0),
-        joined: joined.has(Number(g.id)),
+        joined:
+          joined.has(Number(g.id)) || Number(g.creator_id) === Number(req.user.id),
       })),
     });
   } catch (e) {
@@ -64,12 +80,19 @@ router.post('/groups', auth, async (req, res) => {
       `INSERT INTO game_groups (name, description, creator_id) VALUES (?, ?, ?)`,
       [name, description, req.user.id]
     );
-    await insert(`INSERT INTO game_group_members (group_id, user_id) VALUES (?, ?)`, [
-      info.lastInsertRowid,
-      req.user.id,
-    ]);
-    const group = await queryOne(`SELECT * FROM game_groups WHERE id = ?`, [info.lastInsertRowid]);
-    res.status(201).json({ group });
+    const groupId = info.lastInsertRowid;
+    try {
+      await insert(`INSERT INTO game_group_members (group_id, user_id) VALUES (?, ?)`, [
+        groupId,
+        req.user.id,
+      ]);
+    } catch (e) {
+      console.error('ensure creator member on create', e);
+      // 仍尝试补一次
+      await ensureCreatorMember({ id: groupId, creator_id: req.user.id });
+    }
+    const group = await queryOne(`SELECT * FROM game_groups WHERE id = ?`, [groupId]);
+    res.status(201).json({ group: { ...group, joined: true } });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message || '创建失败' });
@@ -87,6 +110,8 @@ router.get('/groups/:id', auth, async (req, res) => {
       [req.params.id]
     );
     if (!group) return res.status(404).json({ error: '游戏组不存在' });
+
+    await ensureCreatorMember(group);
 
     const members = await queryAll(
       `SELECT m.user_id, m.joined_at, u.nickname, u.student_id
