@@ -60,12 +60,21 @@ pm2 startup systemd -u root --hp /root >/tmp/pm2-startup.txt || true
 # 尝试执行 startup 提示命令（若已配置会忽略失败）
 grep -o 'sudo .*' /tmp/pm2-startup.txt 2>/dev/null | head -1 | bash || true
 
-sleep 3
-curl -fsS "http://127.0.0.1:3000/api/health" | head -c 200 || {
-  echo "健康检查失败，查看日志：pm2 logs nuist-api --lines 30 --nostream"
+echo "==> 等待 API 就绪"
+ok=0
+for i in $(seq 1 20); do
+  if curl -fsS "http://127.0.0.1:3000/api/health" >/tmp/nuist-health.json 2>/dev/null; then
+    head -c 200 /tmp/nuist-health.json
+    echo ""
+    ok=1
+    break
+  fi
+  sleep 1
+done
+if [[ "$ok" -ne 1 ]]; then
+  echo "健康检查失败，查看日志：pm2 logs nuist-api --lines 40 --nostream"
   exit 1
-}
-echo ""
+fi
 echo "==> API 正常"
 
 echo "==> 构建前端（同源 /api，不设 VITE_API_BASE）"
