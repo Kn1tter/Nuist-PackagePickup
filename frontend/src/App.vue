@@ -3,7 +3,7 @@
     <header v-if="!isBare" class="top">
       <div class="top-row">
         <RouterLink to="/" class="brand-block">
-          <div class="brand">南信大互助</div>
+          <div class="brand">南信大互助平台</div>
           <p class="muted tagline">Make NUIST Better</p>
         </RouterLink>
         <div v-if="showNav" class="quick">

@@ -1,5 +1,6 @@
 <template>
   <main class="panel auth">
+    <p class="brand-title">南信大互助平台</p>
     <h1>{{ mode === 'login' ? '登录' : '注册' }}</h1>
     <p class="muted">学号登录 · Make NUIST Better</p>
 
@@ -80,6 +81,14 @@ async function submit() {
   max-width: 420px;
   margin: 2rem auto 0;
   animation: rise 0.45s ease both;
+}
+
+.brand-title {
+  margin: 0 0 0.75rem;
+  font-family: var(--display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--accent);
 }
 
 h1 {

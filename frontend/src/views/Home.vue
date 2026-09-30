@@ -1,6 +1,6 @@
 <template>
   <main class="panel form-wrap">
-    <h1>发布代取</h1>
+    <h1>发布代拿</h1>
     <p class="muted">取件码仅接单人可见；报酬建议线下微信转账。</p>
 
     <form @submit.prevent="submit">
