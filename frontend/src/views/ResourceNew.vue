@@ -1,7 +1,7 @@
 <template>
   <main class="panel form-wrap">
     <h1>分享资源</h1>
-    <p class="muted">推荐贴网盘 / 在线文档链接（Vercel 不适合存大文件）。</p>
+    <p class="muted">推荐贴网盘 / 在线文档链接。</p>
 
     <form @submit.prevent="submit">
       <div class="field">
