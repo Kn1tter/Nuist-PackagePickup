@@ -2,7 +2,7 @@
   <main class="panel auth">
     <p class="brand-title">南信大互助平台</p>
     <h1>{{ mode === 'login' ? '登录' : '注册' }}</h1>
-    <p class="muted">学号登录 · Make NUIST Better</p>
+    <p class="muted">学号登录 · The Greatest NUIST</p>
 
     <form @submit.prevent="submit">
       <div class="field">

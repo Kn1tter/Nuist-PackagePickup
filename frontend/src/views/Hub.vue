@@ -3,7 +3,7 @@
     <section class="intro">
       <div>
         <h1>南信大互助平台</h1>
-        <p class="muted">论坛 · 代拿 · 资源库 · 开黑 · 课表 · Make NUIST Better</p>
+        <p class="muted">论坛 · 代拿 · 资源库 · 开黑 · 课表 · The Greatest NUIST</p>
       </div>
       <p class="contact muted">联系QQ:1440205803</p>
     </section>

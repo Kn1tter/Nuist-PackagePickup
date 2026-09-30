@@ -4,7 +4,7 @@
       <div class="top-row">
         <RouterLink to="/" class="brand-block">
           <div class="brand">南信大互助平台</div>
-          <p class="muted tagline">Make NUIST Better</p>
+          <p class="muted tagline">The Greatest NUIST</p>
         </RouterLink>
         <div v-if="showNav" class="quick">
           <RouterLink to="/feedback" class="chip">反馈</RouterLink>
