@@ -25,10 +25,16 @@
     <p v-else-if="!list.length" class="empty muted">还没有资源，去做第一个分享的人吧。</p>
 
     <div class="list">
-      <article v-for="(r, i) in list" :key="r.id" class="panel card" :style="{ animationDelay: `${i * 0.04}s` }">
+      <article
+        v-for="(r, i) in list"
+        :key="r.id"
+        class="panel card"
+        :style="{ animationDelay: `${i * 0.04}s` }"
+        @click="open(r.id)"
+      >
         <div class="top">
           <span class="cat">{{ r.category }}</span>
-          <button v-if="r.can_delete" class="link-del" type="button" @click="remove(r.id)">删除</button>
+          <span class="muted count">{{ r.comment_count || 0 }} 评论</span>
         </div>
         <h2>{{ r.title }}</h2>
         <p v-if="r.description" class="desc">{{ r.description }}</p>
@@ -36,7 +42,11 @@
           <span>{{ r.nickname || '同学' }}</span>
           <span>{{ formatTime(r.created_at) }}</span>
         </div>
-        <a class="btn ghost open" :href="r.url" target="_blank" rel="noopener noreferrer">打开链接</a>
+        <div class="row" @click.stop>
+          <a class="btn ghost open" :href="r.url" target="_blank" rel="noopener noreferrer">打开链接</a>
+          <RouterLink v-if="r.can_edit" class="btn ghost" :to="`/resources/${r.id}`">编辑</RouterLink>
+          <button v-if="r.can_delete" class="link-del" type="button" @click="remove(r.id)">删除</button>
+        </div>
       </article>
     </div>
   </main>
@@ -44,8 +54,10 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { request } from '../api/request'
 
+const router = useRouter()
 const resources = ref([])
 const categories = ref([])
 const filter = ref('全部')
@@ -63,6 +75,10 @@ function formatTime(v) {
   const d = new Date(v)
   if (Number.isNaN(d.getTime())) return String(v).slice(0, 16)
   return d.toLocaleString('zh-CN', { hour12: false })
+}
+
+function open(id) {
+  router.push(`/resources/${id}`)
 }
 
 async function load() {
@@ -147,6 +163,12 @@ h1 {
 .card {
   padding: 1.1rem 1.2rem;
   animation: rise 0.4s ease both;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
 }
 
 .top {
@@ -154,6 +176,10 @@ h1 {
   justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
+}
+
+.count {
+  font-size: 0.82rem;
 }
 
 .cat {
@@ -174,6 +200,10 @@ h2 {
   margin: 0;
   color: var(--muted);
   line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .meta {
@@ -181,6 +211,13 @@ h2 {
   gap: 0.75rem;
   margin: 0.7rem 0 0.85rem;
   font-size: 0.88rem;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
 }
 
 .open {

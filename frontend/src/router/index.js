@@ -8,6 +8,11 @@ const routes = [
   { path: '/forum/:id', name: 'forum-post', component: () => import('../views/ForumPost.vue') },
   { path: '/resources', name: 'resources', component: () => import('../views/Resources.vue') },
   { path: '/resources/new', name: 'resource-new', component: () => import('../views/ResourceNew.vue') },
+  {
+    path: '/resources/:id',
+    name: 'resource-detail',
+    component: () => import('../views/ResourceDetail.vue'),
+  },
   { path: '/games', name: 'games', component: () => import('../views/Games.vue') },
   { path: '/games/:id', name: 'game-group', component: () => import('../views/GameGroup.vue') },
   { path: '/schedule', name: 'schedule', component: () => import('../views/Schedule.vue') },

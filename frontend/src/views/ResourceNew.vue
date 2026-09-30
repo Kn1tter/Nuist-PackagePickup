@@ -53,8 +53,8 @@ async function submit() {
   loading.value = true
   error.value = ''
   try {
-    await request('/resources', { method: 'POST', body: { ...form } })
-    router.replace('/resources')
+    const data = await request('/resources', { method: 'POST', body: { ...form } })
+    router.replace(`/resources/${data.resource.id}`)
   } catch (e) {
     error.value = e.message
   } finally {

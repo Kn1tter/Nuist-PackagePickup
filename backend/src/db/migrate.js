@@ -36,6 +36,18 @@ export async function migrate({ queryAll, queryOne, execute, isPostgres }) {
     `);
     await execute(`CREATE INDEX IF NOT EXISTS idx_resources_created ON resources(created_at DESC)`);
     await execute(`
+      CREATE TABLE IF NOT EXISTS resource_comments (
+        id SERIAL PRIMARY KEY,
+        resource_id INT NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+        user_id INT NOT NULL REFERENCES users(id),
+        body TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await execute(
+      `CREATE INDEX IF NOT EXISTS idx_resource_comments_res ON resource_comments(resource_id, created_at ASC)`
+    );
+    await execute(`
       CREATE TABLE IF NOT EXISTS feedbacks (
         id SERIAL PRIMARY KEY,
         user_id INT NOT NULL REFERENCES users(id),
@@ -166,6 +178,18 @@ export async function migrate({ queryAll, queryOne, execute, isPostgres }) {
         created_at TEXT DEFAULT (datetime('now'))
       )
     `);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS resource_comments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        resource_id INTEGER NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        body TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now'))
+      )
+    `);
+    await execute(
+      `CREATE INDEX IF NOT EXISTS idx_resource_comments_res ON resource_comments(resource_id, created_at ASC)`
+    );
     await execute(`
       CREATE TABLE IF NOT EXISTS feedbacks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
