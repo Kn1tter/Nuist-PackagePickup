@@ -53,15 +53,16 @@ npm install --omit=optional
 
 echo "==> 启动 API (pm2)"
 pm2 delete nuist-api 2>/dev/null || true
-pm2 start src/app.js --name nuist-api
+# 强制 DNS 优先 IPv4，避免连 Supabase 时 ENETUNREACH
+pm2 start src/app.js --name nuist-api --node-args="--dns-result-order=ipv4first"
 pm2 save
 pm2 startup systemd -u root --hp /root >/tmp/pm2-startup.txt || true
 # 尝试执行 startup 提示命令（若已配置会忽略失败）
 grep -o 'sudo .*' /tmp/pm2-startup.txt 2>/dev/null | head -1 | bash || true
 
-sleep 1
+sleep 3
 curl -fsS "http://127.0.0.1:3000/api/health" | head -c 200 || {
-  echo "健康检查失败，查看日志：pm2 logs nuist-api"
+  echo "健康检查失败，查看日志：pm2 logs nuist-api --lines 30 --nostream"
   exit 1
 }
 echo ""

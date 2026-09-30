@@ -1,6 +1,14 @@
 import fs from 'fs';
 import path from 'path';
+import dns from 'dns';
 import { fileURLToPath } from 'url';
+
+// 阿里云等环境常无可用 IPv6，避免 pg 连到 AAAA 记录导致 ENETUNREACH
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch {
+  /* Node < 16 */
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const usePg = Boolean(process.env.DATABASE_URL);
@@ -69,6 +77,8 @@ async function initPg() {
   pool = new pg.Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false },
+    // 强制只解析 IPv4，避免 ENETUNREACH 到 IPv6
+    lookup: (hostname, _opts, cb) => dns.lookup(hostname, { family: 4 }, cb),
   });
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
