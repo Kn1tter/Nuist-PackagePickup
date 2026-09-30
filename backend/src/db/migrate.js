@@ -284,6 +284,25 @@ export async function migrate({ queryAll, queryOne, execute, isPostgres }) {
     `);
   }
 
+  // 代拿：备注、快递单号；放宽宿舍/快递公司字段长度
+  if (isPostgres()) {
+    await execute(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS remark TEXT`);
+    await execute(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_no VARCHAR(40)`);
+    await execute(`ALTER TABLE orders ALTER COLUMN dorm_building TYPE VARCHAR(40)`);
+    await execute(`ALTER TABLE orders ALTER COLUMN express_company TYPE VARCHAR(40)`);
+  } else {
+    try {
+      await execute(`ALTER TABLE orders ADD COLUMN remark TEXT`);
+    } catch {
+      /* exists */
+    }
+    try {
+      await execute(`ALTER TABLE orders ADD COLUMN tracking_no TEXT`);
+    } catch {
+      /* exists */
+    }
+  }
+
   await syncAdmins({ queryOne, execute, isPostgres });
 }
 

@@ -13,18 +13,20 @@
       <div><dt>尺寸</dt><dd>{{ sizeText }}</dd></div>
       <div><dt>尾号</dt><dd>{{ order.phone_last4 }}</dd></div>
       <div><dt>你的角色</dt><dd>{{ roleText }}</dd></div>
+      <div class="span2"><dt>快递单号</dt><dd class="mono">{{ displayTracking }}</dd></div>
+      <div v-if="order.remark" class="span2"><dt>备注</dt><dd>{{ order.remark }}</dd></div>
     </dl>
 
     <section class="code-box">
       <h2>取件码</h2>
       <template v-if="order.role === 'owner'">
         <p class="code">{{ order.pickup_code }}</p>
-        <p class="muted-light">发单人可随时查看完整取件码</p>
+        <p class="muted-light">发单人可随时查看完整取件码与单号</p>
       </template>
       <template v-else-if="order.can_reveal_code">
         <p class="code">{{ displayCode }}</p>
         <button v-if="!codeFullyShown" class="btn ghost light" type="button" @click="revealCode">
-          查看完整取件码
+          查看完整取件码 / 单号
         </button>
       </template>
       <p v-else class="muted-light">
@@ -160,6 +162,7 @@ const statusText = computed(() => map[order.value?.status] || '')
 const sizeText = computed(() => sizeMap[order.value?.package_size] || '')
 const roleText = computed(() => roleMap[order.value?.role] || '')
 const displayCode = computed(() => revealed.value || order.value?.pickup_code || '••••')
+const displayTracking = computed(() => order.value?.tracking_no || '—')
 const codeFullyShown = computed(() => {
   const c = String(displayCode.value || '')
   return c.length > 0 && !c.includes('****') && c !== '••••'
@@ -284,6 +287,16 @@ h1 {
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.7);
   border: 1px solid var(--line);
+}
+
+.facts .span2 {
+  grid-column: 1 / -1;
+}
+
+.mono {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  word-break: break-all;
 }
 
 dt {

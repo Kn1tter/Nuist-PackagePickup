@@ -7,9 +7,10 @@
     <p class="meta muted">
       {{ order.express_company || '快递' }} · {{ sizeText }} · 尾号 {{ order.phone_last4 }}
     </p>
+    <p v-if="order.remark" class="remark">{{ order.remark }}</p>
     <div class="row bottom">
       <span class="reward">¥{{ Number(order.reward).toFixed(1) }}</span>
-      <span class="muted time">{{ order.created_at }}</span>
+      <span class="muted time">{{ timeText }}</span>
     </div>
   </article>
 </template>
@@ -34,6 +35,14 @@ const sizeMap = { small: '小件', medium: '中件', large: '大件' }
 
 const statusText = computed(() => map[props.order.status] || props.order.status)
 const sizeText = computed(() => sizeMap[props.order.package_size] || props.order.package_size)
+const timeText = computed(() => {
+  const raw = props.order.created_at
+  if (!raw) return ''
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) return String(raw).slice(0, 16)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+})
 </script>
 
 <style scoped>
@@ -57,8 +66,19 @@ const sizeText = computed(() => sizeMap[props.order.package_size] || props.order
 }
 
 .meta {
-  margin: 0.55rem 0 0.85rem;
+  margin: 0.55rem 0 0.35rem;
   font-size: 0.9rem;
+}
+
+.remark {
+  margin: 0 0 0.85rem;
+  font-size: 0.86rem;
+  color: var(--text);
+  opacity: 0.88;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .reward {

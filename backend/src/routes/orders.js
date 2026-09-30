@@ -2,10 +2,13 @@ import { Router } from 'express';
 import { execute, insert, queryAll, queryOne } from '../db/index.js';
 import { auth } from '../middleware/auth.js';
 import { notifyUser } from '../lib/notify.js';
+import { DORM_BUILDINGS, EXPRESS_COMPANIES } from '../lib/pickupDict.js';
 
 const router = Router();
 
 const VALID_SIZES = new Set(['small', 'medium', 'large']);
+const EXPRESS_SET = new Set(EXPRESS_COMPANIES);
+const DORM_SET = new Set(DORM_BUILDINGS);
 const STATUS_FLOW = {
   pending: ['accepted', 'cancelled'],
   accepted: ['picked', 'cancelled'],
@@ -19,6 +22,12 @@ function maskPickupCode(code) {
   const s = String(code || '');
   if (s.length <= 4) return '****';
   return `${s.slice(0, 2)}****${s.slice(-2)}`;
+}
+
+function maskTracking(no) {
+  const s = String(no || '');
+  if (s.length <= 6) return '****';
+  return `${s.slice(0, 3)}****${s.slice(-3)}`;
 }
 
 function sameId(a, b) {
@@ -40,6 +49,12 @@ function shapeOrder(row, viewerId, { revealCode = false } = {}) {
     express_company: row.express_company,
     package_size: row.package_size,
     reward: Number(row.reward),
+    remark: row.remark || '',
+    tracking_no: canSeeFullCode
+      ? row.tracking_no || ''
+      : row.tracking_no
+        ? maskTracking(row.tracking_no)
+        : '',
     status: row.status,
     paid_offline: !!row.paid_offline,
     pickup_photo_url: row.pickup_photo_url,
@@ -57,6 +72,19 @@ function shapeOrder(row, viewerId, { revealCode = false } = {}) {
     role: isOwner ? 'owner' : isCourier ? 'courier' : 'other',
   };
 }
+
+/** 发单下拉字典 */
+router.get('/options', auth, (_req, res) => {
+  res.json({
+    express_companies: EXPRESS_COMPANIES,
+    dorm_buildings: DORM_BUILDINGS,
+    package_sizes: [
+      { value: 'small', label: '小件（文件/鞋盒以内）' },
+      { value: 'medium', label: '中件（日常包裹）' },
+      { value: 'large', label: '大件（需双手/较重）' },
+    ],
+  });
+});
 
 router.get('/', auth, async (req, res) => {
   try {
@@ -90,16 +118,36 @@ router.post('/', auth, async (req, res) => {
       express_company,
       package_size = 'small',
       reward,
+      remark,
+      tracking_no,
     } = req.body || {};
 
-    if (!pickup_code || !dorm_building) {
-      return res.status(400).json({ error: '取件码和宿舍楼必填' });
+    const code = String(pickup_code || '').trim();
+    const dorm = String(dorm_building || '').trim();
+    const company = String(express_company || '').trim();
+    const track = String(tracking_no || '').trim();
+    const note = String(remark || '').trim();
+
+    if (!code || code.length > 50) {
+      return res.status(400).json({ error: '取件码必填，且不超过 50 字' });
+    }
+    if (!DORM_SET.has(dorm)) {
+      return res.status(400).json({ error: '请从列表选择宿舍楼' });
+    }
+    if (!EXPRESS_SET.has(company)) {
+      return res.status(400).json({ error: '请从列表选择快递公司' });
+    }
+    if (!/^\d{8,30}$/.test(track)) {
+      return res.status(400).json({ error: '快递单号须为 8–30 位数字' });
     }
     if (!/^\d{4}$/.test(String(phone_last4 || ''))) {
-      return res.status(400).json({ error: '请填写手机号后 4 位' });
+      return res.status(400).json({ error: '请填写手机号后 4 位数字' });
     }
     if (!VALID_SIZES.has(package_size)) {
       return res.status(400).json({ error: '包裹尺寸无效' });
+    }
+    if (note.length > 200) {
+      return res.status(400).json({ error: '备注请控制在 200 字内' });
     }
     const rewardNum = Number(reward);
     if (!Number.isFinite(rewardNum) || rewardNum < 1 || rewardNum > 99) {
@@ -108,16 +156,18 @@ router.post('/', auth, async (req, res) => {
 
     const info = await insert(
       `INSERT INTO orders
-        (user_id, pickup_code, phone_last4, dorm_building, express_company, package_size, reward)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        (user_id, pickup_code, phone_last4, dorm_building, express_company, package_size, reward, remark, tracking_no)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.user.id,
-        String(pickup_code).trim(),
+        code,
         phone_last4,
-        String(dorm_building).trim(),
-        express_company || null,
+        dorm,
+        company,
         package_size,
         rewardNum,
+        note || null,
+        track,
       ]
     );
 
