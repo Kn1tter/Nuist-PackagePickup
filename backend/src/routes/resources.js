@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { insert, queryAll, queryOne, execute } from '../db/index.js';
 import { isAdminUser } from '../db/migrate.js';
-import { auth } from '../middleware/auth.js';
+import { auth, optionalAuth } from '../middleware/auth.js';
 import { publicStudentId } from '../lib/mask.js';
 
 const router = Router();
@@ -41,7 +41,7 @@ function parseResourceBody(body) {
   return { title, description, url, category };
 }
 
-router.get('/', auth, async (req, res) => {
+router.get('/', optionalAuth, async (req, res) => {
   try {
     const category = String(req.query.category || '').trim();
     const rows = category
@@ -64,12 +64,13 @@ router.get('/', auth, async (req, res) => {
            LIMIT 200`
         );
 
-    const me = await queryOne('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    const viewerId = req.user?.id ?? null;
+    const me = viewerId ? await queryOne('SELECT * FROM users WHERE id = ?', [viewerId]) : null;
     const admin = isAdminUser(me);
     res.json({
       categories: CATEGORIES,
       resources: rows.map((r) => {
-        const owner = sameId(r.user_id, req.user.id);
+        const owner = sameId(r.user_id, viewerId);
         return {
           ...r,
           student_id: publicStudentId(r.student_id),
@@ -85,7 +86,7 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-router.get('/:id', auth, async (req, res) => {
+router.get('/:id', optionalAuth, async (req, res) => {
   try {
     const row = await queryOne(
       `SELECT r.*, u.nickname, u.student_id
@@ -106,9 +107,10 @@ router.get('/:id', auth, async (req, res) => {
       [req.params.id]
     );
 
-    const me = await queryOne('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    const viewerId = req.user?.id ?? null;
+    const me = viewerId ? await queryOne('SELECT * FROM users WHERE id = ?', [viewerId]) : null;
     const admin = isAdminUser(me);
-    const owner = sameId(row.user_id, req.user.id);
+    const owner = sameId(row.user_id, viewerId);
 
     res.json({
       categories: CATEGORIES,
@@ -121,7 +123,7 @@ router.get('/:id', auth, async (req, res) => {
       comments: comments.map((c) => ({
         ...c,
         student_id: publicStudentId(c.student_id),
-        can_delete: admin || sameId(c.user_id, req.user.id) || owner,
+        can_delete: admin || sameId(c.user_id, viewerId) || owner,
       })),
     });
   } catch (e) {

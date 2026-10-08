@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { insert, queryAll, queryOne, execute } from '../db/index.js';
 import { isAdminUser } from '../db/migrate.js';
-import { auth } from '../middleware/auth.js';
+import { auth, optionalAuth } from '../middleware/auth.js';
 import { publicStudentId } from '../lib/mask.js';
 
 const router = Router();
@@ -31,7 +31,7 @@ async function ensureCreatorMember(group) {
 }
 
 /** 游戏组列表 */
-router.get('/groups', auth, async (req, res) => {
+router.get('/groups', optionalAuth, async (req, res) => {
   try {
     const rows = await queryAll(
       `SELECT g.*,
@@ -43,9 +43,10 @@ router.get('/groups', auth, async (req, res) => {
        ORDER BY g.created_at DESC
        LIMIT 100`
     );
-    const mine = await queryAll(`SELECT group_id FROM game_group_members WHERE user_id = ?`, [
-      req.user.id,
-    ]);
+    const viewerId = req.user?.id ?? null;
+    const mine = viewerId
+      ? await queryAll(`SELECT group_id FROM game_group_members WHERE user_id = ?`, [viewerId])
+      : [];
     const joined = new Set(mine.map((m) => Number(m.group_id)));
     res.json({
       groups: rows.map((g) => ({
@@ -53,7 +54,8 @@ router.get('/groups', auth, async (req, res) => {
         member_count: Number(g.member_count || 0),
         open_invites: Number(g.open_invites || 0),
         joined:
-          joined.has(Number(g.id)) || Number(g.creator_id) === Number(req.user.id),
+          !!viewerId &&
+          (joined.has(Number(g.id)) || Number(g.creator_id) === Number(viewerId)),
       })),
     });
   } catch (e) {
@@ -100,7 +102,7 @@ router.post('/groups', auth, async (req, res) => {
 });
 
 /** 组详情 + 成员 + 邀请 */
-router.get('/groups/:id', auth, async (req, res) => {
+router.get('/groups/:id', optionalAuth, async (req, res) => {
   try {
     const group = await queryOne(
       `SELECT g.*, u.nickname AS creator_name
@@ -131,9 +133,11 @@ router.get('/groups/:id', auth, async (req, res) => {
       [req.params.id]
     );
 
-    const me = await queryOne('SELECT * FROM users WHERE id = ?', [req.user.id]);
-    const joined = await isMember(req.params.id, req.user.id);
-    const canManage = isAdminUser(me) || Number(group.creator_id) === Number(req.user.id);
+    const viewerId = req.user?.id ?? null;
+    const me = viewerId ? await queryOne('SELECT * FROM users WHERE id = ?', [viewerId]) : null;
+    const joined = viewerId ? await isMember(req.params.id, viewerId) : false;
+    const canManage =
+      !!viewerId && (isAdminUser(me) || Number(group.creator_id) === Number(viewerId));
 
     res.json({
       group: { ...group, joined, can_manage: canManage },
@@ -143,7 +147,10 @@ router.get('/groups/:id', auth, async (req, res) => {
       })),
       invites: invites.map((i) => ({
         ...i,
-        can_delete: canManage || Number(i.user_id) === Number(req.user.id) || isAdminUser(me),
+        can_delete:
+          canManage ||
+          (!!viewerId && Number(i.user_id) === Number(viewerId)) ||
+          isAdminUser(me),
       })),
       viewer: { is_admin: isAdminUser(me), joined },
     });

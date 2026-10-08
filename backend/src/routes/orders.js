@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { execute, insert, queryAll, queryOne } from '../db/index.js';
-import { auth } from '../middleware/auth.js';
+import { auth, optionalAuth } from '../middleware/auth.js';
 import { notifyUser } from '../lib/notify.js';
 import { DORM_BUILDINGS, EXPRESS_COMPANIES } from '../lib/pickupDict.js';
 
@@ -74,7 +74,7 @@ function shapeOrder(row, viewerId, { revealCode = false } = {}) {
 }
 
 /** 发单下拉字典 */
-router.get('/options', auth, (_req, res) => {
+router.get('/options', optionalAuth, (_req, res) => {
   res.json({
     express_companies: EXPRESS_COMPANIES,
     dorm_buildings: DORM_BUILDINGS,
@@ -86,15 +86,19 @@ router.get('/options', auth, (_req, res) => {
   });
 });
 
-router.get('/', auth, async (req, res) => {
+router.get('/', optionalAuth, async (req, res) => {
   try {
     const { status = 'pending', mine } = req.query;
+    const viewerId = req.user?.id ?? null;
+    if ((mine === 'posted' || mine === 'accepted') && !viewerId) {
+      return res.status(401).json({ error: '未登录' });
+    }
     let rows;
     if (mine === 'posted') {
-      rows = await queryAll('SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC', [req.user.id]);
+      rows = await queryAll('SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC', [viewerId]);
     } else if (mine === 'accepted') {
       rows = await queryAll('SELECT * FROM orders WHERE courier_id = ? ORDER BY id DESC', [
-        req.user.id,
+        viewerId,
       ]);
     } else {
       rows = await queryAll(
@@ -102,7 +106,7 @@ router.get('/', auth, async (req, res) => {
         [status]
       );
     }
-    res.json({ orders: rows.map((r) => shapeOrder(r, req.user.id)) });
+    res.json({ orders: rows.map((r) => shapeOrder(r, viewerId)) });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message || '获取订单失败' });
@@ -179,13 +183,14 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-router.get('/:id', auth, async (req, res) => {
+router.get('/:id', optionalAuth, async (req, res) => {
   try {
     const row = await queryOne('SELECT * FROM orders WHERE id = ?', [req.params.id]);
     if (!row) return res.status(404).json({ error: '订单不存在' });
 
-    const isCourier = sameId(row.courier_id, req.user.id);
-    const isOwner = sameId(row.user_id, req.user.id);
+    const viewerId = req.user?.id ?? null;
+    const isCourier = sameId(row.courier_id, viewerId);
+    const isOwner = sameId(row.user_id, viewerId);
     if (!isCourier && !isOwner && row.status !== 'pending') {
       return res.status(403).json({ error: '无权查看该订单' });
     }
@@ -195,7 +200,7 @@ router.get('/:id', auth, async (req, res) => {
       return res.status(403).json({ error: '无权查看完整取件码' });
     }
 
-    res.json({ order: shapeOrder(row, req.user.id, { revealCode: reveal || isOwner }) });
+    res.json({ order: shapeOrder(row, viewerId, { revealCode: reveal || isOwner }) });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message || '获取详情失败' });

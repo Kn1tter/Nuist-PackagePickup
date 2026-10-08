@@ -5,7 +5,7 @@
         <h1>校内开黑</h1>
         <p class="muted">建游戏组 · 加入 · 发开黑邀请</p>
       </div>
-      <button class="btn" type="button" @click="showCreate = !showCreate">
+      <button class="btn" type="button" @click="toggleCreate">
         {{ showCreate ? '收起' : '新建游戏组' }}
       </button>
     </div>
@@ -55,7 +55,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { request } from '../api/request'
+import { request, requireLogin } from '../api/request'
 
 const router = useRouter()
 const groups = ref([])
@@ -79,7 +79,13 @@ async function load() {
   }
 }
 
+function toggleCreate() {
+  if (!showCreate.value && !requireLogin(router)) return
+  showCreate.value = !showCreate.value
+}
+
 async function createGroup() {
+  if (!requireLogin(router)) return
   creating.value = true
   formError.value = ''
   try {

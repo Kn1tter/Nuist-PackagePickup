@@ -136,10 +136,11 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
-import { apiBase, request } from '../api/request'
+import { useRoute, useRouter } from 'vue-router'
+import { apiBase, request, requireLogin } from '../api/request'
 
 const route = useRoute()
+const router = useRouter()
 const order = ref(null)
 const loading = ref(true)
 const busy = ref(false)
@@ -189,6 +190,7 @@ async function load() {
 }
 
 async function accept() {
+  if (!requireLogin(router)) return
   busy.value = true
   error.value = ''
   try {
@@ -202,6 +204,7 @@ async function accept() {
 }
 
 async function revealCode() {
+  if (!requireLogin(router)) return
   error.value = ''
   try {
     const data = await request(`/orders/${route.params.id}?reveal=1`)
@@ -213,6 +216,7 @@ async function revealCode() {
 }
 
 async function uploadPhoto(kind, ev) {
+  if (!requireLogin(router)) return
   const file = ev.target.files?.[0]
   ev.target.value = ''
   if (!file) return
@@ -234,6 +238,7 @@ async function uploadPhoto(kind, ev) {
 }
 
 async function setStatus(status, paid_offline = false) {
+  if (!requireLogin(router)) return
   busy.value = true
   error.value = ''
   try {

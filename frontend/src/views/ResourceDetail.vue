@@ -85,7 +85,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { request } from '../api/request'
+import { request, requireLogin } from '../api/request'
 
 const route = useRoute()
 const router = useRouter()
@@ -135,6 +135,7 @@ async function load() {
 }
 
 async function save() {
+  if (!requireLogin(router)) return
   saving.value = true
   editError.value = ''
   try {
@@ -153,6 +154,7 @@ async function save() {
 }
 
 async function remove() {
+  if (!requireLogin(router)) return
   if (!confirm('确定删除这条资源？评论也会一起删除。')) return
   try {
     await request(`/resources/${route.params.id}`, { method: 'DELETE' })
@@ -163,6 +165,7 @@ async function remove() {
 }
 
 async function postComment() {
+  if (!requireLogin(router)) return
   commenting.value = true
   commentError.value = ''
   try {

@@ -46,7 +46,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { request } from '../api/request'
+import { request, requireLogin } from '../api/request'
 
 const route = useRoute()
 const router = useRouter()
@@ -77,6 +77,7 @@ async function load() {
 }
 
 async function sendReply() {
+  if (!requireLogin(router)) return
   sending.value = true
   error.value = ''
   try {
@@ -94,6 +95,7 @@ async function sendReply() {
 }
 
 async function removePost() {
+  if (!requireLogin(router)) return
   if (!confirm('确定删除这篇帖子？')) return
   try {
     await request(`/forum/posts/${route.params.id}`, { method: 'DELETE' })
@@ -104,6 +106,7 @@ async function removePost() {
 }
 
 async function removeReply(id) {
+  if (!requireLogin(router)) return
   if (!confirm('确定删除这条回复？')) return
   try {
     await request(`/forum/replies/${id}`, { method: 'DELETE' })

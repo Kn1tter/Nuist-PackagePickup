@@ -137,7 +137,7 @@
 <script setup>
 import { nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { request } from '../api/request'
+import { request, requireLogin } from '../api/request'
 
 const route = useRoute()
 const router = useRouter()
@@ -224,6 +224,7 @@ async function load() {
 }
 
 async function join() {
+  if (!requireLogin(router)) return
   try {
     await request(`/games/groups/${route.params.id}/join`, { method: 'POST' })
     await load()
@@ -233,6 +234,7 @@ async function join() {
 }
 
 async function leave() {
+  if (!requireLogin(router)) return
   try {
     await request(`/games/groups/${route.params.id}/leave`, { method: 'POST' })
     await load()
@@ -242,6 +244,7 @@ async function leave() {
 }
 
 async function removeGroup() {
+  if (!requireLogin(router)) return
   if (!confirm('确定删除该游戏组？邀请与聊天记录也会一起删除。')) return
   try {
     stopPoll()
@@ -253,6 +256,7 @@ async function removeGroup() {
 }
 
 async function sendChat() {
+  if (!requireLogin(router)) return
   const body = chatText.value.trim()
   if (!body) return
   chatSending.value = true
@@ -277,6 +281,7 @@ async function sendChat() {
 }
 
 async function deleteChat(id) {
+  if (!requireLogin(router)) return
   try {
     await request(`/games/chat/${id}`, { method: 'DELETE' })
     chatMessages.value = chatMessages.value.filter((m) => m.id !== id)
@@ -286,6 +291,7 @@ async function deleteChat(id) {
 }
 
 async function postInvite() {
+  if (!requireLogin(router)) return
   posting.value = true
   inviteError.value = ''
   try {
@@ -305,6 +311,7 @@ async function postInvite() {
 }
 
 async function closeInvite(id) {
+  if (!requireLogin(router)) return
   try {
     await request(`/games/invites/${id}/close`, { method: 'POST' })
     await load()
@@ -314,6 +321,7 @@ async function closeInvite(id) {
 }
 
 async function deleteInvite(id) {
+  if (!requireLogin(router)) return
   if (!confirm('确定删除这条邀请？')) return
   try {
     await request(`/games/invites/${id}`, { method: 'DELETE' })

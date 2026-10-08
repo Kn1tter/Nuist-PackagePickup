@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { insert, queryAll, queryOne, execute } from '../db/index.js';
 import { isAdminUser } from '../db/migrate.js';
-import { auth } from '../middleware/auth.js';
+import { auth, optionalAuth } from '../middleware/auth.js';
 import { publicStudentId } from '../lib/mask.js';
 
 const router = Router();
@@ -14,7 +14,7 @@ function maskUser(row) {
   return { ...row, student_id: publicStudentId(row.student_id) };
 }
 
-router.get('/posts', auth, async (_req, res) => {
+router.get('/posts', optionalAuth, async (_req, res) => {
   try {
     const rows = await queryAll(
       `SELECT p.id, p.title, p.body, p.created_at, p.user_id,
@@ -38,7 +38,7 @@ router.get('/posts', auth, async (_req, res) => {
   }
 });
 
-router.get('/posts/:id', auth, async (req, res) => {
+router.get('/posts/:id', optionalAuth, async (req, res) => {
   try {
     const post = await queryOne(
       `SELECT p.*, u.nickname, u.student_id
@@ -58,15 +58,16 @@ router.get('/posts/:id', auth, async (req, res) => {
       [req.params.id]
     );
 
-    const me = await queryOne('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    const viewerId = req.user?.id ?? null;
+    const me = viewerId ? await queryOne('SELECT * FROM users WHERE id = ?', [viewerId]) : null;
     res.json({
       post: {
         ...maskUser(post),
-        can_delete: boolAdmin(me) || post.user_id === req.user.id,
+        can_delete: !!viewerId && (boolAdmin(me) || Number(post.user_id) === Number(viewerId)),
       },
       replies: replies.map((r) => ({
         ...maskUser(r),
-        can_delete: boolAdmin(me) || r.user_id === req.user.id,
+        can_delete: !!viewerId && (boolAdmin(me) || Number(r.user_id) === Number(viewerId)),
       })),
       viewer: { is_admin: boolAdmin(me) },
     });

@@ -28,6 +28,22 @@ export function clearSession() {
   localStorage.removeItem(USER_KEY)
 }
 
+export function isLoggedIn() {
+  return !!getToken()
+}
+
+/** 操作前确认登录；未登录则跳转登录页并带上回跳地址 */
+export function requireLogin(router, redirect) {
+  if (isLoggedIn()) return true
+  const path =
+    redirect ||
+    (typeof window !== 'undefined'
+      ? `${window.location.pathname}${window.location.search}`
+      : '/')
+  router.push({ name: 'login', query: { redirect: path } })
+  return false
+}
+
 export async function request(path, options = {}) {
   const headers = { ...(options.headers || {}) }
   if (!(options.body instanceof FormData)) {

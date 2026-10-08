@@ -7,10 +7,13 @@
           <p class="muted tagline">The Greatest NUIST</p>
         </RouterLink>
         <div v-if="showNav" class="quick">
-          <RouterLink to="/feedback" class="chip">反馈</RouterLink>
-          <RouterLink to="/messages" class="chip msg">
+          <RouterLink v-if="loggedIn" to="/feedback" class="chip">反馈</RouterLink>
+          <RouterLink v-if="loggedIn" to="/messages" class="chip msg">
             消息
             <span v-if="unread > 0" class="badge">{{ unread > 99 ? '99+' : unread }}</span>
+          </RouterLink>
+          <RouterLink v-else :to="{ name: 'login', query: { redirect: route.fullPath } }" class="chip login">
+            登录
           </RouterLink>
         </div>
       </div>
@@ -60,12 +63,16 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { getToken, request } from './api/request'
+import { getToken, isLoggedIn, request } from './api/request'
 
 const route = useRoute()
 const unread = ref(0)
 const isBare = computed(() => !!route.meta.bare)
 const showNav = computed(() => route.name !== 'login' && !isBare.value)
+const loggedIn = computed(() => {
+  void route.fullPath
+  return isLoggedIn()
+})
 const inForum = computed(() => String(route.path).startsWith('/forum'))
 const inResources = computed(() => String(route.path).startsWith('/resources'))
 const inGames = computed(() => String(route.path).startsWith('/games'))
@@ -152,6 +159,12 @@ onUnmounted(() => {
   background: var(--bg-deep);
   color: #fff;
   border-color: transparent;
+}
+
+.chip.login {
+  background: #409eff;
+  border-color: transparent;
+  color: #fff;
 }
 
 .badge {
