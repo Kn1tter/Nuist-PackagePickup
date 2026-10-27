@@ -38,6 +38,12 @@
         <strong>我的课表</strong>
         <p>录入课表后按日生成网页悬浮窗，一眼看到时间、课程与楼号。</p>
       </RouterLink>
+
+      <RouterLink class="entry chocolate" to="/app">
+        <span class="eyebrow">Chocolate Ledger</span>
+        <strong>巧克力记账</strong>
+        <p>本地记账、图表与月度对比；下载 APK，更新走本站通道。</p>
+      </RouterLink>
     </div>
   </main>
 </template>
@@ -135,6 +141,10 @@ h1 {
 
 .schedule {
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(180, 230, 220, 0.5));
+}
+
+.chocolate {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(232, 181, 122, 0.42));
 }
 
 @keyframes rise {

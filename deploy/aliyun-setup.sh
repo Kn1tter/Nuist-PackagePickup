@@ -84,6 +84,9 @@ rm -f .env.production
 npm install
 npm run build
 
+echo "==> 同步巧克力记账 APK 到 /app/"
+bash "$APP_ROOT/deploy/sync-chocolate-ledger.sh"
+
 echo "==> 配置 Nginx"
 install -m 644 "$APP_ROOT/deploy/nginx-nuist.conf" /etc/nginx/sites-available/nuist
 # 把 root 路径写死为当前仓库

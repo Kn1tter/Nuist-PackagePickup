@@ -66,3 +66,28 @@ cd /var/www/nuist
 git pull
 bash deploy/aliyun-setup.sh
 ```
+
+## 巧克力记账（/app）
+
+部署脚本会在前端构建后拉取 Release APK 到 `frontend/dist/app/`：
+
+- 页面：`https://chocolatefornuist.tech/app`
+- 更新清单：`https://chocolatefornuist.tech/app/update.json`
+- APK：`https://chocolatefornuist.tech/app/chocolate-ledger.apk`
+
+仅同步 APK（不重建整站）时：
+
+```bash
+cd /var/www/nuist
+bash deploy/sync-chocolate-ledger.sh
+```
+
+换版本：改 `frontend/public/app/update.json` 与 `deploy/sync-chocolate-ledger.sh` 内版本号，再：
+
+```bash
+CHOCOLATE_LEDGER_TAG=chocolate-ledger-x.y.z bash deploy/sync-chocolate-ledger.sh
+# 或 Release 未就绪时用本地包：
+CHOCOLATE_LEDGER_APK=/path/to/chocolate-ledger.apk bash deploy/sync-chocolate-ledger.sh
+```
+
+当前频道：**1.1.2** / versionCode **4**（可编辑月预算）。

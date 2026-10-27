@@ -3,6 +3,13 @@ import { getToken } from '../api/request'
 
 const routes = [
   { path: '/', name: 'hub', component: () => import('../views/Hub.vue') },
+  {
+    path: '/app',
+    name: 'chocolate-ledger',
+    component: () => import('../views/ChocolateLedger.vue'),
+    meta: { bare: true, title: '巧克力记账' },
+  },
+  { path: '/chocolate-ledger', redirect: '/app' },
   { path: '/forum', name: 'forum', component: () => import('../views/Forum.vue') },
   {
     path: '/forum/new',
