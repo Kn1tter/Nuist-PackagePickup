@@ -3,12 +3,18 @@
     <section class="intro">
       <div>
         <h1>南信大互助平台</h1>
-        <p class="muted">论坛 · 代拿 · 资源库 · 开黑 · 课表 · The Greatest NUIST</p>
+        <p class="muted">论坛 · 代拿 · 资源库 · 开黑 · 课表 · 巧克力记账 · The Greatest NUIST</p>
       </div>
       <p class="contact muted">联系QQ:1440205803</p>
     </section>
 
     <div class="entries">
+      <RouterLink class="entry chocolate" to="/app">
+        <span class="eyebrow">Chocolate Ledger · App 下载</span>
+        <strong>巧克力记账</strong>
+        <p>本地下载 APK · 图表与月度对比 · 更新走本站通道。</p>
+      </RouterLink>
+
       <RouterLink class="entry forum" to="/forum">
         <span class="eyebrow">Campus Talk</span>
         <strong>校园论坛</strong>
@@ -37,12 +43,6 @@
         <span class="eyebrow">Timetable</span>
         <strong>我的课表</strong>
         <p>录入课表后按日生成网页悬浮窗，一眼看到时间、课程与楼号。</p>
-      </RouterLink>
-
-      <RouterLink class="entry chocolate" to="/app">
-        <span class="eyebrow">Chocolate Ledger</span>
-        <strong>巧克力记账</strong>
-        <p>本地记账、图表与月度对比；下载 APK，更新走本站通道。</p>
       </RouterLink>
     </div>
   </main>

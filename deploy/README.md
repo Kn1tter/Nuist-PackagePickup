@@ -90,4 +90,9 @@ CHOCOLATE_LEDGER_TAG=chocolate-ledger-x.y.z bash deploy/sync-chocolate-ledger.sh
 CHOCOLATE_LEDGER_APK=/path/to/chocolate-ledger.apk bash deploy/sync-chocolate-ledger.sh
 ```
 
-当前频道：**1.1.2** / versionCode **4**（可编辑月预算）。
+当前频道：**1.1.9** / versionCode **11**（站点直链 APK 供应用内更新）。
+
+### APK 下载偏慢时
+
+nginx 未对 APK 做 `limit_rate` / `limit_conn`（`deploy/nginx-nuist.conf` 已对 `*.apk` 关闭 gzip、启用 sendfile）。  
+本机 HTTPS 可达百兆级，公网慢通常是 **ECS 公网出带宽**（按带宽计费的峰值）不足，不是站点限速。处理：控制台提高实例/EIP 出网带宽，或把 APK 放到 OSS+CDN / 外链 Release。
