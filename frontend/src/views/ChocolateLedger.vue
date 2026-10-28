@@ -17,14 +17,14 @@
         <h1 class="brand">巧克力记账</h1>
         <p class="lede">本地优先的记账 App · 图表、月度对比、智能归类，一键检查更新。</p>
         <div class="cta">
-          <a class="btn-dl" :href="apkUrl" download>
+          <a class="btn-dl" :href="apkUrl" target="_blank" rel="noopener">
             下载 APK
           </a>
           <a class="btn-ghost" :href="updateJsonUrl" target="_blank" rel="noopener">
             更新通道
           </a>
         </div>
-        <p class="hint">Android · 约 54MB · 更新检测地址已指向本站</p>
+        <p class="hint">Android · 约 54MB · APK 经 GitHub Release 下载</p>
       </div>
 
       <div class="hero-visual">
@@ -60,8 +60,9 @@
 <script setup>
 import { onMounted } from 'vue'
 
-const version = '1.1.2'
-const apkUrl = '/app/chocolate-ledger.apk'
+const version = '1.1.4'
+const apkUrl =
+  'https://github.com/Kn1tter/Nuist-PackagePickup/releases/download/chocolate-ledger-1.1.4/chocolate-ledger.apk'
 const updateJsonUrl = '/app/update.json'
 
 const features = [
@@ -69,7 +70,7 @@ const features = [
   { title: '图表', desc: '饼图、折线、柱状多维看花销。' },
   { title: '月度对比', desc: '这个月比上个月多花了多少，一眼知道。' },
   { title: '智能归类', desc: '相近小额支出自动归到习惯类目。' },
-  { title: '检查更新', desc: '应用内与后台提醒，走本站 update.json。' },
+  { title: '检查更新', desc: '应用内检测本站 update.json，APK 走 GitHub Release。' },
 ]
 
 onMounted(() => {

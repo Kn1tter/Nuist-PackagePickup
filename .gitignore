@@ -6,3 +6,7 @@ backend/uploads/*
 !backend/uploads/.gitkeep
 *.log
 .DS_Store
+
+# Chocolate Ledger APK mirror (synced by deploy script, not committed)
+frontend/public/app/*.apk
+frontend/dist/app/*.apk
