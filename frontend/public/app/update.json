@@ -1,6 +1,6 @@
 {
-  "version": "1.1.2",
-  "versionCode": 4,
-  "apkUrl": "https://chocolatefornuist.tech/app/chocolate-ledger.apk",
-  "notes": "可编辑月预算"
+  "version": "1.1.3",
+  "versionCode": 5,
+  "apkUrl": "https://github.com/Kn1tter/Nuist-PackagePickup/releases/download/chocolate-ledger-1.1.3/chocolate-ledger.apk",
+  "notes": "APK 由 GitHub Release 下载，站点保留镜像"
 }
