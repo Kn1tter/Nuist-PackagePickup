@@ -60,9 +60,9 @@
 <script setup>
 import { onMounted } from 'vue'
 
-const version = '1.1.3'
+const version = '1.1.4'
 const apkUrl =
-  'https://github.com/Kn1tter/Nuist-PackagePickup/releases/download/chocolate-ledger-1.1.3/chocolate-ledger.apk'
+  'https://github.com/Kn1tter/Nuist-PackagePickup/releases/download/chocolate-ledger-1.1.4/chocolate-ledger.apk'
 const updateJsonUrl = '/app/update.json'
 
 const features = [

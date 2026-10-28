@@ -73,7 +73,7 @@ bash deploy/aliyun-setup.sh
 
 - 页面：`https://chocolatefornuist.tech/app`
 - 更新清单：`https://chocolatefornuist.tech/app/update.json`（`apkUrl` 指向 GitHub Release）
-- APK（推荐）：`https://github.com/Kn1tter/Nuist-PackagePickup/releases/download/chocolate-ledger-1.1.3/chocolate-ledger.apk`
+- APK（推荐）：`https://github.com/Kn1tter/Nuist-PackagePickup/releases/download/chocolate-ledger-1.1.4/chocolate-ledger.apk`
 - APK（站点镜像，可选）：`https://chocolatefornuist.tech/app/chocolate-ledger.apk`
 
 仅同步 APK（不重建整站）时：
@@ -93,4 +93,4 @@ CHOCOLATE_LEDGER_APK=/path/to/chocolate-ledger.apk bash deploy/sync-chocolate-le
 
 发版后务必重跑 sync：Vite 构建会覆盖 `frontend/dist/app/`，只保留 `public/app` 里的文件；若未把 APK 放进 `public/app` 或未 sync，站点直链会 404（HTML 被另存为 .apk → 解析包失败）。
 
-当前频道：**1.1.3** / versionCode **5**（APK 走 GitHub Release）。
+当前频道：**1.1.4** / versionCode **6**（APK 走 GitHub Release）。

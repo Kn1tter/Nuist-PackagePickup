@@ -3,13 +3,13 @@
 # 用法（在仓库根，构建后或部署脚本末尾）：
 #   bash deploy/sync-chocolate-ledger.sh
 # 可选环境变量：
-#   CHOCOLATE_LEDGER_TAG=chocolate-ledger-1.1.3
+#   CHOCOLATE_LEDGER_TAG=chocolate-ledger-1.1.4
 #   CHOCOLATE_LEDGER_DIST=frontend/dist/app
 #   CHOCOLATE_LEDGER_APK=/path/to/local.apk   # 优先用本地 APK，跳过 GitHub 下载
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-TAG="${CHOCOLATE_LEDGER_TAG:-chocolate-ledger-1.1.3}"
+TAG="${CHOCOLATE_LEDGER_TAG:-chocolate-ledger-1.1.4}"
 DEST="${CHOCOLATE_LEDGER_DIST:-$ROOT/frontend/dist/app}"
 BASE="https://github.com/Kn1tter/Nuist-PackagePickup/releases/download/${TAG}"
 LOCAL_APK="${CHOCOLATE_LEDGER_APK:-}"
@@ -21,10 +21,10 @@ mkdir -p "$DEST" "$PUBLIC_DEST"
 echo "==> 写入 update.json（apkUrl 指向 GitHub Release，避免 ECS 慢速/发版覆盖）"
 cat > "$DEST/update.json" <<EOF
 {
-  "version": "1.1.3",
-  "versionCode": 5,
+  "version": "1.1.4",
+  "versionCode": 6,
   "apkUrl": "${BASE}/chocolate-ledger.apk",
-  "notes": "APK 由 GitHub Release 下载，站点保留镜像"
+  "notes": "截图记账 OCR；APK 经 GitHub Release 下载（避免站点 404/截断导致解析失败）"
 }
 EOF
 cp -f "$DEST/update.json" "$PUBLIC_DEST/update.json"
