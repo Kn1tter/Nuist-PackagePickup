@@ -1,6 +1,7 @@
 {
-  "version": "1.1.2",
-  "versionCode": 4,
+  "version": "1.1.20",
+  "versionCode": 22,
   "apkUrl": "https://chocolatefornuist.tech/app/chocolate-ledger.apk",
-  "notes": "可编辑月预算"
+  "apkSize": 91224564,
+  "notes": "桌面图标恢复为蓝色 Flutter 默认图标；开屏狗狗图保留。含 v1+v2 签名。"
 }
