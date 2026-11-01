@@ -10,6 +10,13 @@ const routes = [
     meta: { bare: true, title: '巧克力记账' },
   },
   { path: '/chocolate-ledger', redirect: '/app' },
+  {
+    path: '/game',
+    name: 'maze-flashlight',
+    component: () => import('../views/MazeFlashlight.vue'),
+    meta: { bare: true, title: '迷宫夜战' },
+  },
+  { path: '/cs', redirect: '/game' },
   { path: '/forum', name: 'forum', component: () => import('../views/Forum.vue') },
   {
     path: '/forum/new',
