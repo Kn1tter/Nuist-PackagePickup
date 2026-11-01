@@ -3,7 +3,7 @@
     <section class="intro">
       <div>
         <h1>南信大互助平台</h1>
-        <p class="muted">论坛 · 代拿 · 资源库 · 开黑 · 课表 · The Greatest NUIST</p>
+        <p class="muted">论坛 · 代拿 · 资源库 · 开黑 · 夜战 · 课表 · The Greatest NUIST</p>
       </div>
       <p class="contact muted">联系QQ:1440205803</p>
     </section>
@@ -43,6 +43,12 @@
         <span class="eyebrow">Chocolate Ledger</span>
         <strong>巧克力记账</strong>
         <p>本地记账、图表与月度对比；下载 APK，更新走本站通道。</p>
+      </RouterLink>
+
+      <RouterLink class="entry maze" to="/game">
+        <span class="eyebrow">Flashlight CS</span>
+        <strong>迷宫夜战</strong>
+        <p>随机迷宫、手电光锥、顶视角对枪；WASD + 鼠标，手机也能玩。</p>
       </RouterLink>
     </div>
   </main>
@@ -145,6 +151,10 @@ h1 {
 
 .chocolate {
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(232, 181, 122, 0.42));
+}
+
+.maze {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(40, 52, 68, 0.28));
 }
 
 @keyframes rise {
