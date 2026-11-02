@@ -52,6 +52,7 @@
           <RouterLink to="/resources">资源</RouterLink>
           <RouterLink to="/games">开黑</RouterLink>
           <RouterLink to="/game">夜战</RouterLink>
+          <RouterLink to="/game/tank">坦克</RouterLink>
           <RouterLink to="/schedule">课表</RouterLink>
           <RouterLink to="/profile">我的</RouterLink>
         </template>

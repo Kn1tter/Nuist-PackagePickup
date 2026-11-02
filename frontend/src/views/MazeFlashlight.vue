@@ -6,7 +6,10 @@
         <p class="eyebrow">Flashlight CS</p>
         <h1>迷宫夜战</h1>
       </div>
-      <button class="restart" type="button" @click="restart">重开</button>
+      <div class="chrome-actions">
+        <RouterLink class="linkish" to="/game/tank">坦克联机</RouterLink>
+        <button class="restart" type="button" @click="restart">重开</button>
+      </div>
     </div>
 
     <div ref="stageRef" class="stage">
@@ -177,6 +180,13 @@ h1 {
   font-family: 'IBM Plex Sans', 'PingFang SC', sans-serif;
 }
 
+.chrome-actions {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.linkish,
 .restart {
   border: 1px solid var(--line);
   background: rgba(70, 110, 150, 0.22);
@@ -185,6 +195,8 @@ h1 {
   padding: 0.4rem 0.85rem;
   font-weight: 700;
   cursor: pointer;
+  text-decoration: none;
+  font-size: 0.86rem;
 }
 
 .stage {

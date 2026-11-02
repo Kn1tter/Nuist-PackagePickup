@@ -16,6 +16,13 @@ const routes = [
     component: () => import('../views/MazeFlashlight.vue'),
     meta: { bare: true, title: '迷宫夜战' },
   },
+  {
+    path: '/game/tank',
+    name: 'battle-tank',
+    component: () => import('../views/BattleTank.vue'),
+    meta: { bare: true, title: '坦克大战' },
+  },
+  { path: '/tank', redirect: '/game/tank' },
   { path: '/cs', redirect: '/game' },
   { path: '/forum', name: 'forum', component: () => import('../views/Forum.vue') },
   {

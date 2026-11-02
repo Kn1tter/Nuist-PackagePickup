@@ -50,6 +50,12 @@
         <strong>迷宫夜战</strong>
         <p>随机迷宫、手电光锥、顶视角对枪；WASD + 鼠标，手机也能玩。</p>
       </RouterLink>
+
+      <RouterLink class="entry tank" to="/game/tank">
+        <span class="eyebrow">Battle City</span>
+        <strong>坦克大战</strong>
+        <p>经典坦克造型联机对战，黑墙迷宫 + 车灯；开房即可 2–4 人开打。</p>
+      </RouterLink>
     </div>
   </main>
 </template>
@@ -155,6 +161,10 @@ h1 {
 
 .maze {
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(40, 52, 68, 0.28));
+}
+
+.tank {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(70, 90, 70, 0.28));
 }
 
 @keyframes rise {

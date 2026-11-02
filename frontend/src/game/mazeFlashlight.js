@@ -476,6 +476,30 @@ export function createGame(canvas, opts = {}) {
     }
   }
 
+  function drawTankUnit(x, y, bodyAng, aimAng, color, flash) {
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.rotate(bodyAng || 0)
+    ctx.fillStyle = '#12161c'
+    ctx.fillRect(-11, -8, 22, 16)
+    ctx.fillStyle = flash ? '#9ad0ff' : color
+    ctx.fillRect(-9, -6, 18, 12)
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'
+    ctx.fillRect(-9, -6, 18, 2.5)
+    ctx.fillRect(-9, 3.5, 18, 2.5)
+    ctx.restore()
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.rotate(aimAng || 0)
+    ctx.fillStyle = '#d7e0ea'
+    ctx.beginPath()
+    ctx.arc(0, 0, 4.8, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = color
+    ctx.fillRect(2, -2, 13, 4)
+    ctx.restore()
+  }
+
   function drawLightMask() {
     const rays = 72
     const ox = player.x
@@ -616,19 +640,7 @@ export function createGame(canvas, opts = {}) {
         e.y
       )
       if (!vis) continue
-      ctx.beginPath()
-      ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2)
-      ctx.fillStyle = '#e24b3b'
-      ctx.fill()
-      ctx.strokeStyle = 'rgba(255,180,160,0.5)'
-      ctx.lineWidth = 1.5
-      ctx.stroke()
-      // tiny facing tick
-      ctx.beginPath()
-      ctx.moveTo(e.x, e.y)
-      ctx.lineTo(e.x + Math.cos(e.aim) * 10, e.y + Math.sin(e.aim) * 10)
-      ctx.strokeStyle = 'rgba(255,120,100,0.7)'
-      ctx.stroke()
+      drawTankUnit(e.x, e.y, e.aim, e.aim, '#e24b3b', false)
     }
 
     ctx.restore() // end light clip
@@ -646,26 +658,13 @@ export function createGame(canvas, opts = {}) {
     ctx.lineWidth = 1.5
     ctx.stroke()
 
-    // player always visible (near-body glow)
+    // player tank always visible
     ctx.beginPath()
-    ctx.arc(player.x, player.y, player.r + 10, 0, Math.PI * 2)
+    ctx.arc(player.x, player.y, 16, 0, Math.PI * 2)
     ctx.fillStyle = 'rgba(120, 190, 255, 0.08)'
     ctx.fill()
-    ctx.beginPath()
-    ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2)
-    ctx.fillStyle = player.invuln > 0 && ((player.invuln * 10) | 0) % 2 ? '#9ad0ff' : '#6ec8ff'
-    ctx.fill()
-    ctx.strokeStyle = 'rgba(200, 235, 255, 0.7)'
-    ctx.lineWidth = 1.5
-    ctx.stroke()
-    ctx.beginPath()
-    ctx.moveTo(player.x, player.y)
-    ctx.lineTo(
-      player.x + Math.cos(player.aimSmooth) * 12,
-      player.y + Math.sin(player.aimSmooth) * 12
-    )
-    ctx.strokeStyle = 'rgba(180, 220, 255, 0.85)'
-    ctx.stroke()
+    const flash = player.invuln > 0 && ((player.invuln * 10) | 0) % 2
+    drawTankUnit(player.x, player.y, player.aimSmooth, player.aimSmooth, '#6ec8ff', flash)
 
     // bullets / particles (respect light roughly)
     for (const b of bullets) {
