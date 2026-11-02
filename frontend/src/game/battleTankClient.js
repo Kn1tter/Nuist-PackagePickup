@@ -299,15 +299,30 @@ export function createBattleTankClient(canvas, hooks = {}) {
     return connect(name)
   }
 
-  async function createRoom(name) {
+  async function createRoom(name, opts = {}) {
     await ensureAuthed(name)
-    if (!send({ type: 'create' })) throw new Error('尚未连上服务器')
+    if (!send({ type: 'create', admin: !!opts.admin, code: opts.code })) {
+      throw new Error('尚未连上服务器')
+    }
   }
 
   async function joinRoom(name, code) {
     await ensureAuthed(name)
-    if (!send({ type: 'join', code: String(code || '').trim().toUpperCase() })) {
+    const c = String(code || '').trim().toUpperCase()
+    if (!send({ type: 'join', code: c })) {
       throw new Error('尚未连上服务器')
+    }
+  }
+
+  async function joinAdminRoom(name) {
+    await ensureAuthed(name)
+    if (!send({ type: 'joinAdmin' })) throw new Error('尚未连上服务器')
+  }
+
+  function addBots(count = 1) {
+    if (!send({ type: 'addBots', count })) {
+      error = '尚未连上服务器'
+      emit()
     }
   }
 
@@ -587,6 +602,8 @@ export function createBattleTankClient(canvas, hooks = {}) {
     ensureAuthed,
     createRoom,
     joinRoom,
+    joinAdminRoom,
+    addBots,
     leaveRoom,
     startGame,
     restartGame,

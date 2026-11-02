@@ -2,6 +2,7 @@ import { WebSocketServer } from 'ws'
 import {
   createRoom,
   disconnectRoom,
+  ensureAdminRoom,
   handleMsg,
   joinRoom,
   leaveRoom,
@@ -77,7 +78,12 @@ export function attachBattleTankWs(_server) {
         }
         if (msg.type === 'create') {
           leaveRoom(ws)
-          createRoom(ws, ws._btUser)
+          createRoom(ws, ws._btUser, { admin: !!msg.admin, code: msg.code })
+          return
+        }
+        if (msg.type === 'joinAdmin' || (msg.type === 'join' && String(msg.code || msg.roomId || '').toUpperCase() === 'TEST')) {
+          leaveRoom(ws)
+          ensureAdminRoom(ws, ws._btUser)
           return
         }
         if (msg.type === 'join') {

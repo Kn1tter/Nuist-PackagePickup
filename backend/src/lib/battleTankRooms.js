@@ -6,6 +6,9 @@
 const MAX_ROOMS = 24
 const MAX_PLAYERS = 4
 const MIN_START = 2
+const ADMIN_CODE = 'TEST'
+const ADMIN_MIN_START = 1
+const ADMIN_AUTO_BOTS = 2
 const TICK_MS = 50 // 20 Hz
 const BROADCAST_EVERY = 1
 const FIRE_CD = 0.38
@@ -18,6 +21,7 @@ const COLS = 19
 const ROWS = 15
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 const COLORS = ['#6ec8ff', '#ff7a6a', '#f0d27a', '#7ddea0']
+let botSeq = 1
 
 const WALL = 1
 const FLOOR = 0
@@ -136,11 +140,43 @@ function moveEntity(grid, ent, vx, vy, dt) {
   if (!blocked(grid, ent.x, ny, TANK_R * 0.85)) ent.y = ny
 }
 
+function makeBotWs() {
+  return { readyState: 0, send() {} }
+}
+
+function makePlayer(user, colorIndex, { bot = false, ws = null } = {}) {
+  return {
+    id: user.id,
+    name: user.name,
+    color: COLORS[colorIndex % COLORS.length],
+    ws: bot ? makeBotWs() : ws,
+    bot: !!bot,
+    ready: !!bot,
+    x: 0,
+    y: 0,
+    body: 0,
+    aim: 0,
+    hp: 1,
+    lives: LIVES,
+    alive: true,
+    kills: 0,
+    score: 0,
+    fireCd: 0,
+    invuln: 0,
+    input: { up: false, down: false, left: false, right: false, fire: false, aim: 0 },
+  }
+}
+
+function humansOf(room) {
+  return room.players.filter((p) => !p.bot)
+}
+
 function publicPlayer(p) {
   return {
     id: p.id,
     name: p.name,
     color: p.color,
+    bot: !!p.bot,
     x: Math.round(p.x * 10) / 10,
     y: Math.round(p.y * 10) / 10,
     body: Math.round(p.body * 1000) / 1000,
@@ -180,21 +216,77 @@ function broadcast(room, msg) {
   for (const p of room.players) send(p.ws, payload)
 }
 
+function minStartFor(room) {
+  return room.admin ? ADMIN_MIN_START : MIN_START
+}
+
 function lobbyInfo(room) {
   return {
     type: 'lobby',
     code: room.code,
     status: room.status,
     hostId: room.hostId,
+    admin: !!room.admin,
     players: room.players.map((p) => ({
       id: p.id,
       name: p.name,
       color: p.color,
       ready: !!p.ready,
+      bot: !!p.bot,
     })),
-    minStart: MIN_START,
+    minStart: minStartFor(room),
     maxPlayers: MAX_PLAYERS,
   }
+}
+
+function updateBotInput(room, bot) {
+  const foes = room.players.filter((p) => p.alive && p.id !== bot.id && p.lives > 0)
+  let target = null
+  let best = Infinity
+  for (const f of foes) {
+    const d = Math.hypot(f.x - bot.x, f.y - bot.y)
+    if (d < best) {
+      best = d
+      target = f
+    }
+  }
+  if (!target) {
+    bot.input = { up: false, down: false, left: false, right: false, fire: false, aim: bot.aim }
+    return
+  }
+  const dx = target.x - bot.x
+  const dy = target.y - bot.y
+  const aim = Math.atan2(dy, dx)
+  bot.input = {
+    up: dy < -10,
+    down: dy > 10,
+    left: dx < -10,
+    right: dx > 10,
+    fire: best < 260 && Math.random() < 0.42,
+    aim,
+  }
+}
+
+function addBots(room, count = 1) {
+  const n = Math.max(0, Math.min(Number(count) || 0, MAX_PLAYERS - room.players.length))
+  const added = []
+  for (let i = 0; i < n; i++) {
+    const id = `bot${botSeq++}`
+    const bot = makePlayer(
+      { id, name: `机器人${room.players.filter((p) => p.bot).length + 1}` },
+      room.players.length,
+      { bot: true }
+    )
+    room.players.push(bot)
+    added.push(bot)
+  }
+  return added
+}
+
+function ensureAdminBots(room) {
+  if (!room.admin) return
+  if (room.players.length >= 2) return
+  addBots(room, Math.max(ADMIN_AUTO_BOTS, 2 - room.players.length))
 }
 
 function stopTimer(room) {
@@ -269,6 +361,10 @@ function tick(room, dt) {
   ensureRoomAlive(room)
 
   for (const p of room.players) {
+    if (p.bot && p.alive) updateBotInput(room, p)
+  }
+
+  for (const p of room.players) {
     if (!p.alive) continue
     p.fireCd = Math.max(0, p.fireCd - dt)
     p.invuln = Math.max(0, p.invuln - dt)
@@ -341,7 +437,7 @@ function tick(room, dt) {
   room.bullets = room.bullets.filter((b) => b.life > 0)
 
   const living = room.players.filter((p) => p.lives > 0)
-  if (living.length <= 1 && room.players.length >= MIN_START) {
+  if (living.length <= 1 && room.players.length >= 2) {
     endMatch(room, living[0]?.id || null)
   }
 }
@@ -359,39 +455,18 @@ export function listWaitingRooms() {
       code: r.code,
       players: r.players.length,
       maxPlayers: MAX_PLAYERS,
+      admin: !!r.admin,
       host: r.players.find((p) => p.id === r.hostId)?.name || '房主',
     }))
     .slice(0, 20)
 }
 
-export function createRoom(ws, user) {
-  if (rooms.size >= MAX_ROOMS) throw new Error('房间已满，稍后再开')
-  leaveRoom(ws)
-  let code = makeCode()
-  while (rooms.has(code)) code = makeCode()
-  const player = {
-    id: user.id,
-    name: user.name,
-    color: COLORS[0],
-    ws,
-    ready: false,
-    x: 0,
-    y: 0,
-    body: 0,
-    aim: 0,
-    hp: 1,
-    lives: LIVES,
-    alive: true,
-    kills: 0,
-    score: 0,
-    fireCd: 0,
-    invuln: 0,
-    input: { up: false, down: false, left: false, right: false, fire: false, aim: 0 },
-  }
-  const room = {
+function buildRoom(code, player, { admin = false } = {}) {
+  return {
     code,
     hostId: player.id,
     status: 'lobby',
+    admin: !!admin,
     players: [player],
     grid: null,
     bullets: [],
@@ -401,6 +476,60 @@ export function createRoom(ws, user) {
     winnerId: null,
     touched: now(),
   }
+}
+
+/** Fixed admin test room: code TEST — solo start or fight bots. */
+export function ensureAdminRoom(ws, user) {
+  leaveRoom(ws)
+  let room = rooms.get(ADMIN_CODE)
+  if (room && room.status !== 'lobby') {
+    // Reset stuck test match so a lone tester can always get in
+    stopTimer(room)
+    room.status = 'lobby'
+    room.grid = null
+    room.bullets = []
+    room.winnerId = null
+    room.players = room.players.filter((p) => !p.bot && p.ws && p.ws.readyState === 1)
+  }
+  if (!room) {
+    if (rooms.size >= MAX_ROOMS) throw new Error('房间已满，稍后再开')
+    const player = makePlayer(user, 0, { ws })
+    room = buildRoom(ADMIN_CODE, player, { admin: true })
+    ws._btRoomId = ADMIN_CODE
+    ws._btPlayerId = player.id
+    rooms.set(ADMIN_CODE, room)
+    send(ws, lobbyInfo(room))
+    send(ws, { type: 'created', code: ADMIN_CODE, admin: true })
+    return room
+  }
+  if (room.players.some((p) => p.id === user.id && !p.bot)) throw new Error('你已在测试房里')
+  if (humansOf(room).length + 1 > MAX_PLAYERS) throw new Error('房间已满')
+  // Drop dangling disconnected humans before seating
+  room.players = room.players.filter((p) => p.bot || (p.ws && p.ws.readyState === 1) || p.ws === ws)
+  if (room.players.length >= MAX_PLAYERS) throw new Error('房间已满')
+  const player = makePlayer(user, room.players.length, { ws })
+  room.players.push(player)
+  if (!humansOf(room).some((p) => p.id === room.hostId)) {
+    room.hostId = player.id
+  }
+  ws._btRoomId = room.code
+  ws._btPlayerId = player.id
+  ensureRoomAlive(room)
+  for (const p of room.players) send(p.ws, lobbyInfo(room))
+  send(ws, { type: 'created', code: ADMIN_CODE, admin: true })
+  return room
+}
+
+export function createRoom(ws, user, opts = {}) {
+  if (opts.admin || String(opts.code || '').toUpperCase() === ADMIN_CODE) {
+    return ensureAdminRoom(ws, user)
+  }
+  if (rooms.size >= MAX_ROOMS) throw new Error('房间已满，稍后再开')
+  leaveRoom(ws)
+  let code = makeCode()
+  while (rooms.has(code) || code === ADMIN_CODE) code = makeCode()
+  const player = makePlayer(user, 0, { ws })
+  const room = buildRoom(code, player, { admin: false })
   ws._btRoomId = code
   ws._btPlayerId = player.id
   rooms.set(code, room)
@@ -413,31 +542,14 @@ export function joinRoom(ws, user, code) {
   const id = String(code || '')
     .trim()
     .toUpperCase()
+  if (id === ADMIN_CODE) return ensureAdminRoom(ws, user)
   const room = rooms.get(id)
   if (!room) throw new Error('房间不存在')
   if (room.status !== 'lobby') throw new Error('对局已开始，无法加入')
   if (room.players.length >= MAX_PLAYERS) throw new Error('房间已满')
   if (room.players.some((p) => p.id === user.id)) throw new Error('你已在房间里')
   leaveRoom(ws)
-  const player = {
-    id: user.id,
-    name: user.name,
-    color: COLORS[room.players.length % COLORS.length],
-    ws,
-    ready: false,
-    x: 0,
-    y: 0,
-    body: 0,
-    aim: 0,
-    hp: 1,
-    lives: LIVES,
-    alive: true,
-    kills: 0,
-    score: 0,
-    fireCd: 0,
-    invuln: 0,
-    input: { up: false, down: false, left: false, right: false, fire: false, aim: 0 },
-  }
+  const player = makePlayer(user, room.players.length, { ws })
   room.players.push(player)
   ws._btRoomId = room.code
   ws._btPlayerId = player.id
@@ -454,15 +566,15 @@ export function leaveRoom(ws) {
   ws._btPlayerId = null
   if (!room) return
   room.players = room.players.filter((p) => p.ws !== ws)
-  if (!room.players.length) {
+  const humans = humansOf(room)
+  if (!humans.length) {
     destroyRoom(code)
     return
   }
-  if (!room.players.some((p) => p.id === room.hostId)) {
-    room.hostId = room.players[0].id
+  if (!humans.some((p) => p.id === room.hostId)) {
+    room.hostId = humans[0].id
   }
   if (room.status === 'playing') {
-    // keep match going; if alone ends soon via tick
     broadcast(room)
   } else {
     for (const p of room.players) send(p.ws, lobbyInfo(room))
@@ -490,17 +602,34 @@ export function handleMsg(ws, user, msg) {
     return
   }
 
+  if (msg.type === 'addBots' || msg.type === 'bots') {
+    if (!room.admin) throw new Error('仅测试房可加机器人')
+    if (me.id !== room.hostId) throw new Error('只有房主可以加机器人')
+    if (room.status !== 'lobby' && room.status !== 'ended') throw new Error('对局中无法加机器人')
+    const want = Math.max(1, Math.min(3, Number(msg.count) || 1))
+    addBots(room, want)
+    for (const p of room.players) send(p.ws, lobbyInfo(room))
+    return
+  }
+
   if (msg.type === 'start') {
     if (me.id !== room.hostId) throw new Error('只有房主可以开始')
     if (room.status !== 'lobby') throw new Error('已在对局中')
-    if (room.players.length < MIN_START) throw new Error(`至少 ${MIN_START} 人才能开始`)
+    if (room.admin) ensureAdminBots(room)
+    if (room.players.length < minStartFor(room)) {
+      throw new Error(`至少 ${minStartFor(room)} 人才能开始`)
+    }
     startMatch(room)
     return
   }
 
   if (msg.type === 'restart') {
     if (me.id !== room.hostId) throw new Error('只有房主可以重开')
-    if (room.players.length < MIN_START) throw new Error(`至少 ${MIN_START} 人`)
+    if (room.admin) {
+      room.status = 'lobby'
+      ensureAdminBots(room)
+    }
+    if (room.players.length < minStartFor(room)) throw new Error(`至少 ${minStartFor(room)} 人`)
     startMatch(room)
     return
   }

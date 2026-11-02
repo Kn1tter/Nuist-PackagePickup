@@ -24,6 +24,9 @@
           {{ busy ? '连接中…' : connected ? '已连接' : '连接服务器' }}
         </button>
         <button class="btn primary" type="button" :disabled="!canAct || busy" @click="doCreate">开房</button>
+        <button class="btn admin" type="button" :disabled="!canAct || busy" @click="doAdmin">
+          测试房 TEST
+        </button>
       </div>
 
       <div class="row">
@@ -38,13 +41,16 @@
       <ul v-if="rooms.length" class="rooms">
         <li v-for="r in rooms" :key="r.code">
           <strong>{{ r.code }}</strong>
-          <span>{{ r.host }} · {{ r.players }}/{{ r.maxPlayers }}</span>
+          <span>{{ r.host }} · {{ r.players }}/{{ r.maxPlayers }}{{ r.admin ? ' · 测试' : '' }}</span>
           <button type="button" class="btn tiny" :disabled="busy" @click="quickJoin(r.code)">加入</button>
         </li>
       </ul>
 
       <p class="hint">
         桌面：WASD 移动 · 鼠标移动瞄准 · 单击或空格开火 · 触屏：左移 / 右瞄准 / 开火键
+      </p>
+      <p class="hint admin-hint">
+        测试房：点「测试房 TEST」或加入房间码 <code>TEST</code>。可一人开局（自动补 2 机器人），也可点「加机器人」再开打。
       </p>
     </section>
 
@@ -58,22 +64,35 @@
         </div>
         <div class="chrome-actions">
           <button
+            v-if="isHost && isAdminRoom && uiStatus === 'lobby'"
+            class="linkish"
+            type="button"
+            @click="clientAddBots()"
+          >
+            加机器人
+          </button>
+          <button
             v-if="isHost && (uiStatus === 'lobby' || uiStatus === 'ended')"
             class="linkish primary"
             type="button"
             @click="uiStatus === 'ended' ? clientRestart() : clientStart()"
           >
-            {{ uiStatus === 'ended' ? '再来一局' : '开始对战' }}
+            {{ uiStatus === 'ended' ? '再来一局' : isAdminRoom ? '开始测试' : '开始对战' }}
           </button>
           <button class="linkish" type="button" @click="doLeave">离开</button>
         </div>
       </div>
 
+      <p v-if="isAdminRoom && uiStatus === 'lobby'" class="admin-banner">
+        测试房 <strong>TEST</strong> · 可独自开局（自动补机器人）或先「加机器人」
+      </p>
+
       <ul v-if="uiStatus === 'lobby' && lobby?.players?.length" class="roster">
         <li v-for="p in lobby.players" :key="p.id">
           <i :style="{ background: p.color }" />
           {{ p.name }}
-          <em v-if="p.id === lobby.hostId">房主</em>
+          <em v-if="p.bot">Bot</em>
+          <em v-else-if="p.id === lobby.hostId">房主</em>
         </li>
       </ul>
       <p v-if="error" class="err bar-err">{{ error }}</p>
@@ -132,8 +151,9 @@ let client = null
 
 const canAct = computed(() => name.value.trim().length > 0)
 const isHost = computed(() => !!(lobby.value && lobby.value.hostId === meId.value))
+const isAdminRoom = computed(() => !!(lobby.value && (lobby.value.admin || lobby.value.code === 'TEST')))
 const statusLabel = computed(() => {
-  if (uiStatus.value === 'lobby') return '大厅等待中'
+  if (uiStatus.value === 'lobby') return isAdminRoom.value ? '测试大厅' : '大厅等待中'
   if (uiStatus.value === 'playing') return '激战中'
   if (uiStatus.value === 'ended') return '本局结束'
   if (connecting.value) return '连接中'
@@ -205,6 +225,16 @@ function doCreate() {
   })
 }
 
+function doAdmin() {
+  return withBusy(async () => {
+    await client.joinAdminRoom(name.value.trim())
+    phase.value = 'play'
+    await nextTick()
+    fit()
+    statusLine.value = '已进入测试房 TEST（可一人开局 / 加机器人）'
+  })
+}
+
 function doJoin() {
   return withBusy(async () => {
     await client.joinRoom(name.value.trim(), joinCode.value)
@@ -230,6 +260,9 @@ function clientStart() {
 }
 function clientRestart() {
   client?.restartGame()
+}
+function clientAddBots() {
+  client?.addBots(1)
 }
 function doLeave() {
   client?.leaveRoom()
@@ -344,6 +377,27 @@ h1 {
 .btn.primary {
   background: rgba(196, 150, 70, 0.32);
   border-color: rgba(220, 180, 100, 0.35);
+}
+
+.btn.admin {
+  background: rgba(90, 120, 90, 0.28);
+  border-color: rgba(120, 160, 120, 0.35);
+}
+
+.admin-hint {
+  opacity: 0.85;
+}
+
+.admin-hint code {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  letter-spacing: 0.08em;
+  color: #c4d4b8;
+}
+
+.admin-banner {
+  margin: 0.45rem 0 0;
+  font-size: 0.82rem;
+  color: #9eb69a;
 }
 
 .btn:disabled {
