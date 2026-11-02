@@ -45,6 +45,12 @@
         <p>本地记账、图表与月度对比；下载 APK，更新走本站通道。</p>
       </RouterLink>
     </div>
+
+    <p class="dev-links" aria-label="dev">
+      <RouterLink to="/game">/game</RouterLink>
+      <span>·</span>
+      <RouterLink to="/game/tank">/game/tank</RouterLink>
+    </p>
   </main>
 </template>
 
@@ -145,6 +151,29 @@ h1 {
 
 .chocolate {
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(232, 181, 122, 0.42));
+}
+
+.dev-links {
+  margin: 1.35rem 0 0;
+  text-align: right;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  opacity: 0.45;
+}
+
+.dev-links a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.dev-links a:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.dev-links span {
+  margin: 0 0.35rem;
 }
 
 @keyframes rise {
