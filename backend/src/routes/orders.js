@@ -1,14 +1,25 @@
 import { Router } from 'express';
 import { execute, insert, queryAll, queryOne } from '../db/index.js';
+import { isAdminUser } from '../db/migrate.js';
 import { auth, optionalAuth } from '../middleware/auth.js';
 import { notifyUser } from '../lib/notify.js';
-import { DORM_BUILDINGS, EXPRESS_COMPANIES } from '../lib/pickupDict.js';
+import { EXPRESS_COMPANIES } from '../lib/pickupDict.js';
 
 const router = Router();
 
+const JOIN_ADMIN_QQ = '1440205803';
+
+async function requireAdmin(req, res) {
+  const me = await queryOne('SELECT * FROM users WHERE id = ?', [req.user.id]);
+  if (!isAdminUser(me)) {
+    res.status(403).json({ error: '仅管理员可操作' });
+    return null;
+  }
+  return me;
+}
+
 const VALID_SIZES = new Set(['small', 'medium', 'large']);
 const EXPRESS_SET = new Set(EXPRESS_COMPANIES);
-const DORM_SET = new Set(DORM_BUILDINGS);
 const STATUS_FLOW = {
   pending: ['accepted', 'cancelled'],
   accepted: ['picked', 'cancelled'],
@@ -73,17 +84,77 @@ function shapeOrder(row, viewerId, { revealCode = false } = {}) {
   };
 }
 
-/** 发单下拉字典 */
+/** 发单选项（快递公司仍用字典；宿舍楼为自由填写） */
 router.get('/options', optionalAuth, (_req, res) => {
   res.json({
     express_companies: EXPRESS_COMPANIES,
-    dorm_buildings: DORM_BUILDINGS,
     package_sizes: [
       { value: 'small', label: '小件（文件/鞋盒以内）' },
       { value: 'medium', label: '中件（日常包裹）' },
       { value: 'large', label: '大件（需双手/较重）' },
     ],
   });
+});
+
+/** 官方派送专员列表（公开） */
+router.get('/specialists', optionalAuth, async (req, res) => {
+  try {
+    const rows = await queryAll(
+      `SELECT id, nickname, qq, note, created_at FROM courier_specialists ORDER BY id ASC`
+    );
+    let is_admin = false;
+    if (req.user?.id) {
+      const me = await queryOne('SELECT is_admin FROM users WHERE id = ?', [req.user.id]);
+      is_admin = isAdminUser(me);
+    }
+    res.json({
+      specialists: rows,
+      is_admin,
+      join_admin_qq: JOIN_ADMIN_QQ,
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message || '加载专员失败' });
+  }
+});
+
+/** 管理员添加官方派送专员 */
+router.post('/specialists', auth, async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const nickname = String(req.body?.nickname || '').trim().slice(0, 40);
+    const qq = String(req.body?.qq || '').replace(/\D/g, '').slice(0, 20);
+    const note = String(req.body?.note || '').trim().slice(0, 80);
+    if (!nickname) return res.status(400).json({ error: '请填写昵称' });
+    if (!/^\d{5,12}$/.test(qq)) return res.status(400).json({ error: 'QQ 号格式不正确' });
+    const dup = await queryOne(`SELECT id FROM courier_specialists WHERE qq = ?`, [qq]);
+    if (dup) return res.status(409).json({ error: '该 QQ 已在专员列表中' });
+    const info = await insert(
+      `INSERT INTO courier_specialists (nickname, qq, note) VALUES (?, ?, ?)`,
+      [nickname, qq, note]
+    );
+    const row = await queryOne(`SELECT * FROM courier_specialists WHERE id = ?`, [
+      info.lastInsertRowid,
+    ]);
+    res.status(201).json({ specialist: row });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message || '添加失败' });
+  }
+});
+
+/** 管理员删除官方派送专员 */
+router.delete('/specialists/:id', auth, async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: '无效 id' });
+    await execute(`DELETE FROM courier_specialists WHERE id = ?`, [id]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message || '删除失败' });
+  }
 });
 
 router.get('/', optionalAuth, async (req, res) => {
@@ -135,8 +206,8 @@ router.post('/', auth, async (req, res) => {
     if (!code || code.length > 50) {
       return res.status(400).json({ error: '取件码必填，且不超过 50 字' });
     }
-    if (!DORM_SET.has(dorm)) {
-      return res.status(400).json({ error: '请从列表选择宿舍楼' });
+    if (!dorm || dorm.length > 40) {
+      return res.status(400).json({ error: '请填写宿舍楼（不超过 40 字）' });
     }
     if (!EXPRESS_SET.has(company)) {
       return res.status(400).json({ error: '请从列表选择快递公司' });

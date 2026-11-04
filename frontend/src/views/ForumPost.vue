@@ -5,7 +5,7 @@
         <div>
           <h1>{{ post.title }}</h1>
           <p class="muted">
-            {{ post.nickname || '同学' }} · {{ formatTime(post.created_at) }}
+            {{ post.nickname || '同学' }} · Lv.{{ post.level || 1 }} · {{ formatTime(post.created_at) }}
             <span v-if="viewer.is_admin" class="badge">管理员视角</span>
           </p>
         </div>
@@ -14,6 +14,18 @@
         </button>
       </div>
       <p class="body">{{ post.body }}</p>
+      <div class="actions">
+        <button
+          type="button"
+          class="like-btn"
+          :class="{ on: post.liked_by_me }"
+          :disabled="liking"
+          @click="toggleLike"
+        >
+          {{ post.liked_by_me ? '已赞' : '点赞' }} · {{ post.like_count || 0 }}
+        </button>
+        <span v-if="xpTip" class="xp-tip">{{ xpTip }}</span>
+      </div>
     </article>
 
     <section class="panel replies">
@@ -21,6 +33,7 @@
       <div v-for="r in replies" :key="r.id" class="reply">
         <div class="reply-top">
           <strong>{{ r.nickname || '同学' }}</strong>
+          <span class="lv muted">Lv.{{ r.level || 1 }}</span>
           <span class="muted">{{ formatTime(r.created_at) }}</span>
           <button v-if="r.can_delete" class="link-del" type="button" @click="removeReply(r.id)">
             删除
@@ -46,7 +59,8 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { request, requireLogin } from '../api/request'
+import { request, requireMember } from '../api/request'
+import { formatTime } from '../lib/time'
 
 const route = useRoute()
 const router = useRouter()
@@ -55,13 +69,16 @@ const replies = ref([])
 const viewer = ref({ is_admin: false })
 const replyBody = ref('')
 const sending = ref(false)
+const liking = ref(false)
 const error = ref('')
+const xpTip = ref('')
 
-function formatTime(v) {
-  if (!v) return ''
-  const d = new Date(v)
-  if (Number.isNaN(d.getTime())) return String(v).slice(0, 16)
-  return d.toLocaleString('zh-CN', { hour12: false })
+function showXp(gained, info) {
+  if (!gained || !info) return
+  xpTip.value = `+${gained} 经验 · 当前 Lv.${info.level}`
+  window.setTimeout(() => {
+    if (xpTip.value.startsWith(`+${gained}`)) xpTip.value = ''
+  }, 2800)
 }
 
 async function load() {
@@ -77,7 +94,7 @@ async function load() {
 }
 
 async function sendReply() {
-  if (!requireLogin(router)) return
+  if (!requireMember(router)) return
   sending.value = true
   error.value = ''
   try {
@@ -87,6 +104,7 @@ async function sendReply() {
     })
     replies.value.push({ ...data.reply, can_delete: true })
     replyBody.value = ''
+    showXp(data.xp_gained, data.xp)
   } catch (e) {
     error.value = e.message
   } finally {
@@ -94,8 +112,26 @@ async function sendReply() {
   }
 }
 
+async function toggleLike() {
+  if (!requireMember(router)) return
+  liking.value = true
+  error.value = ''
+  try {
+    const data = await request(`/forum/posts/${route.params.id}/like`, { method: 'POST' })
+    post.value = {
+      ...post.value,
+      liked_by_me: !!data.liked,
+      like_count: Number(data.like_count || 0),
+    }
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    liking.value = false
+  }
+}
+
 async function removePost() {
-  if (!requireLogin(router)) return
+  if (!requireMember(router)) return
   if (!confirm('确定删除这篇帖子？')) return
   try {
     await request(`/forum/posts/${route.params.id}`, { method: 'DELETE' })
@@ -106,7 +142,7 @@ async function removePost() {
 }
 
 async function removeReply(id) {
-  if (!requireLogin(router)) return
+  if (!requireMember(router)) return
   if (!confirm('确定删除这条回复？')) return
   try {
     await request(`/forum/replies/${id}`, { method: 'DELETE' })
@@ -152,6 +188,40 @@ h2 {
   margin: 1rem 0 0;
   white-space: pre-wrap;
   line-height: 1.6;
+}
+
+.actions {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.like-btn {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.like-btn.on {
+  background: rgba(196, 92, 38, 0.12);
+  border-color: rgba(196, 92, 38, 0.35);
+  color: var(--accent-2);
+}
+
+.xp-tip {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.lv {
+  font-size: 0.85rem;
 }
 
 .badge {

@@ -29,12 +29,17 @@ async function initSqlite() {
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   sqlite = new Database(dbPath);
   sqlite.pragma('journal_mode = WAL');
+  sqlite.pragma('synchronous = NORMAL');
+  sqlite.pragma('temp_store = MEMORY');
+  sqlite.pragma('cache_size = -16000'); // ~16MB page cache
+  sqlite.pragma('busy_timeout = 5000');
   sqlite.pragma('foreign_keys = ON');
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       student_id TEXT UNIQUE NOT NULL,
-      phone TEXT NOT NULL,
+      phone TEXT NOT NULL DEFAULT '',
+      email TEXT UNIQUE,
       password_hash TEXT NOT NULL,
       nickname TEXT,
       credit_score INTEGER DEFAULT 100,
@@ -81,12 +86,19 @@ async function initPg() {
     ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false },
     // 强制只解析 IPv4，避免 ENETUNREACH 到 IPv6
     lookup: (hostname, _opts, cb) => dns.lookup(hostname, { family: 4 }, cb),
+    // 站点面向国内：NOW()/TIMESTAMP 按北京时间，避免比真实时间慢 8 小时
+    options: '-c timezone=Asia/Shanghai',
   });
+  pool.on('connect', (client) => {
+    client.query(`SET TIME ZONE 'Asia/Shanghai'`).catch(() => {});
+  });
+  await pool.query(`SET TIME ZONE 'Asia/Shanghai'`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       student_id VARCHAR(20) UNIQUE NOT NULL,
-      phone VARCHAR(20) NOT NULL,
+      phone VARCHAR(20) NOT NULL DEFAULT '',
+      email VARCHAR(120) UNIQUE,
       password_hash TEXT NOT NULL,
       nickname VARCHAR(50),
       credit_score INT DEFAULT 100,

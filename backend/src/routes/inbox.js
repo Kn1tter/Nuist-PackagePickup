@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { Router } from 'express';
 import { insert, queryAll, queryOne, execute, isPostgres } from '../db/index.js';
 import { isAdminUser } from '../db/migrate.js';
@@ -33,6 +34,33 @@ router.get('/unread-count', auth, async (req, res) => {
   }
 });
 
+/** 未读全站公告（供全站弹窗） */
+router.get('/announcements/unread', auth, async (req, res) => {
+  try {
+    const rows = await queryAll(
+      isPostgres()
+        ? `SELECT * FROM messages
+           WHERE user_id = ? AND is_read = FALSE AND title LIKE '%【全站公告】%'
+           ORDER BY created_at DESC
+           LIMIT 10`
+        : `SELECT * FROM messages
+           WHERE user_id = ? AND is_read = 0 AND title LIKE '%【全站公告】%'
+           ORDER BY created_at DESC
+           LIMIT 10`,
+      [req.user.id]
+    );
+    res.json({
+      announcements: rows.map((m) => ({
+        ...m,
+        is_read: m.is_read === true || m.is_read === 1 || m.is_read === 't',
+      })),
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message || '加载公告失败' });
+  }
+});
+
 /** 我的消息列表 */
 router.get('/messages', auth, async (req, res) => {
   try {
@@ -54,13 +82,128 @@ router.get('/messages', auth, async (req, res) => {
   }
 });
 
+async function requireAdmin(req, res) {
+  const me = await queryOne('SELECT * FROM users WHERE id = ?', [req.user.id]);
+  if (!isAdminUser(me)) {
+    res.status(403).json({ error: '仅管理员可操作' });
+    return null;
+  }
+  return me;
+}
+
+/** 管理员：已发送的全站公告列表（按批次） */
+router.get('/announcements/admin', auth, async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+
+    const withId = await queryAll(
+      isPostgres()
+        ? `SELECT announce_id,
+                  title,
+                  body,
+                  link,
+                  MIN(created_at) AS created_at,
+                  COUNT(*)::int AS recipients
+           FROM messages
+           WHERE announce_id IS NOT NULL AND announce_id <> ''
+           GROUP BY announce_id, title, body, link
+           ORDER BY MIN(created_at) DESC
+           LIMIT 50`
+        : `SELECT announce_id,
+                  title,
+                  body,
+                  link,
+                  MIN(created_at) AS created_at,
+                  COUNT(*) AS recipients
+           FROM messages
+           WHERE announce_id IS NOT NULL AND announce_id <> ''
+           GROUP BY announce_id, title, body, link
+           ORDER BY MIN(created_at) DESC
+           LIMIT 50`
+    );
+
+    const legacy = await queryAll(
+      isPostgres()
+        ? `SELECT NULL::text AS announce_id,
+                  title,
+                  body,
+                  link,
+                  MIN(created_at) AS created_at,
+                  COUNT(*)::int AS recipients
+           FROM messages
+           WHERE title LIKE '%【全站公告】%'
+             AND (announce_id IS NULL OR announce_id = '')
+           GROUP BY title, body, link
+           ORDER BY MIN(created_at) DESC
+           LIMIT 30`
+        : `SELECT NULL AS announce_id,
+                  title,
+                  body,
+                  link,
+                  MIN(created_at) AS created_at,
+                  COUNT(*) AS recipients
+           FROM messages
+           WHERE title LIKE '%【全站公告】%'
+             AND (announce_id IS NULL OR announce_id = '')
+           GROUP BY title, body, link
+           ORDER BY MIN(created_at) DESC
+           LIMIT 30`
+    );
+
+    res.json({
+      announcements: [...withId, ...legacy].map((a) => ({
+        ...a,
+        recipients: Number(a.recipients || 0),
+        legacy: !a.announce_id,
+      })),
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message || '加载公告失败' });
+  }
+});
+
+/** 管理员撤回全站公告（删除所有用户收到的该条） */
+router.delete('/announcements', auth, async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+
+    const announceId = String(req.body?.announce_id || '').trim();
+    const title = String(req.body?.title || '').trim();
+    const body = String(req.body?.body || '').trim();
+
+    let result;
+    if (announceId) {
+      result = await execute(`DELETE FROM messages WHERE announce_id = ?`, [announceId]);
+    } else if (title && body) {
+      // 兼容旧公告（无 announce_id）
+      result = await execute(
+        isPostgres()
+          ? `DELETE FROM messages
+             WHERE title = ? AND body = ?
+               AND title LIKE '%【全站公告】%'
+               AND (announce_id IS NULL OR announce_id = '')`
+          : `DELETE FROM messages
+             WHERE title = ? AND body = ?
+               AND title LIKE '%【全站公告】%'
+               AND (announce_id IS NULL OR announce_id = '')`,
+        [title, body]
+      );
+    } else {
+      return res.status(400).json({ error: '请指定要删除的公告' });
+    }
+
+    res.json({ ok: true, deleted: result.changes || 0 });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message || '删除公告失败' });
+  }
+});
+
 /** 管理员全站公告（群发站内信） */
 router.post('/announce', auth, async (req, res) => {
   try {
-    const me = await queryOne('SELECT * FROM users WHERE id = ?', [req.user.id]);
-    if (!isAdminUser(me)) {
-      return res.status(403).json({ error: '仅管理员可发送全站公告' });
-    }
+    if (!(await requireAdmin(req, res))) return;
 
     const titleRaw = String(req.body?.title || '').trim();
     const body = String(req.body?.body || '').trim();
@@ -79,14 +222,20 @@ router.post('/announce', auth, async (req, res) => {
     const title = titleRaw.startsWith('【全站公告】')
       ? titleRaw
       : `【全站公告】${titleRaw}`.slice(0, 120);
+    const announceId = crypto.randomBytes(8).toString('hex');
 
     const result = await execute(
-      `INSERT INTO messages (user_id, title, body, link)
-       SELECT id, ?, ?, ? FROM users`,
-      [title, body, link]
+      `INSERT INTO messages (user_id, title, body, link, announce_id)
+       SELECT id, ?, ?, ?, ? FROM users`,
+      [title, body, link, announceId]
     );
 
-    res.status(201).json({ ok: true, count: result.changes || 0, title });
+    res.status(201).json({
+      ok: true,
+      count: result.changes || 0,
+      title,
+      announce_id: announceId,
+    });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message || '发送公告失败' });

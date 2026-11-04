@@ -12,7 +12,7 @@
 
     <section v-if="isAdmin" class="panel announce">
       <h2>全站公告</h2>
-      <p class="tip muted">仅管理员可见。发送后所有用户都会在消息里收到，类似群公告。</p>
+      <p class="tip muted">仅管理员可见。发送后所有用户会立刻看到巨大弹窗，消息列表中也会保留。</p>
       <form class="form" @submit.prevent="sendAnnounce">
         <div class="field">
           <label>标题</label>
@@ -38,6 +38,31 @@
           {{ sending ? '发送中…' : '发送给全体用户' }}
         </button>
       </form>
+
+      <div v-if="sentAnnounces.length" class="sent">
+        <h3>已发送公告</h3>
+        <p class="tip muted">删除会撤回所有用户收到的该条公告（含弹窗）。</p>
+        <ul>
+          <li v-for="a in sentAnnounces" :key="a.announce_id || `${a.title}-${a.created_at}`">
+            <div>
+              <strong>{{ displayTitle(a.title) }}</strong>
+              <span class="muted meta">
+                {{ formatTime(a.created_at) }} · {{ a.recipients }} 人
+                <template v-if="a.legacy"> · 旧公告</template>
+              </span>
+              <p class="preview">{{ a.body }}</p>
+            </div>
+            <button
+              type="button"
+              class="btn danger ghost"
+              :disabled="deletingKey === announceKey(a)"
+              @click="removeAnnounce(a)"
+            >
+              {{ deletingKey === announceKey(a) ? '删除中…' : '删除' }}
+            </button>
+          </li>
+        </ul>
+      </div>
     </section>
 
     <p v-if="error" class="err">{{ error }}</p>
@@ -67,6 +92,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { request } from '../api/request'
+import { formatTime } from '../lib/time'
 
 const router = useRouter()
 const messages = ref([])
@@ -74,23 +100,28 @@ const isAdmin = ref(false)
 const loading = ref(true)
 const error = ref('')
 const sending = ref(false)
+const deletingKey = ref('')
 const announceError = ref('')
 const announceOk = ref('')
+const sentAnnounces = ref([])
 const announce = reactive({
   title: '',
   body: '',
   link: '',
 })
 
-function formatTime(v) {
-  if (!v) return ''
-  const d = new Date(v)
-  if (Number.isNaN(d.getTime())) return String(v).slice(0, 16)
-  return d.toLocaleString('zh-CN', { hour12: false })
-}
-
 function isAnnouncement(m) {
   return String(m.title || '').includes('【全站公告】')
+}
+
+function displayTitle(title) {
+  return String(title || '')
+    .replace(/^【全站公告】\s*/, '')
+    .trim() || '全站公告'
+}
+
+function announceKey(a) {
+  return a.announce_id || `legacy:${a.title}::${a.body}`
 }
 
 async function load() {
@@ -100,10 +131,43 @@ async function load() {
     const data = await request('/inbox/messages')
     messages.value = data.messages || []
     isAdmin.value = !!data.is_admin
+    if (data.is_admin) await loadSentAnnounces()
+    else sentAnnounces.value = []
   } catch (e) {
     error.value = e.message
   } finally {
     loading.value = false
+  }
+}
+
+async function loadSentAnnounces() {
+  try {
+    const data = await request('/inbox/announcements/admin')
+    sentAnnounces.value = data.announcements || []
+  } catch {
+    sentAnnounces.value = []
+  }
+}
+
+async function removeAnnounce(a) {
+  const label = displayTitle(a.title)
+  if (!window.confirm(`确定删除公告「${label}」？所有用户收到的该条都会被撤回。`)) return
+  deletingKey.value = announceKey(a)
+  announceError.value = ''
+  try {
+    const data = await request('/inbox/announcements', {
+      method: 'DELETE',
+      body: a.announce_id
+        ? { announce_id: a.announce_id }
+        : { title: a.title, body: a.body },
+    })
+    announceOk.value = `已删除（撤回 ${data.deleted || 0} 条）`
+    await load()
+    window.dispatchEvent(new CustomEvent('nuist-unread-refresh'))
+  } catch (e) {
+    announceError.value = e.message
+  } finally {
+    deletingKey.value = ''
   }
 }
 
@@ -197,6 +261,58 @@ h1 {
 .form {
   display: grid;
   gap: 0.75rem;
+}
+
+.sent {
+  margin-top: 1.25rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--line);
+}
+
+.sent h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.98rem;
+}
+
+.sent ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.sent li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.85rem;
+  align-items: flex-start;
+  padding: 0.75rem 0.85rem;
+  border-radius: 12px;
+  background: rgba(20, 36, 28, 0.04);
+}
+
+.sent .meta {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+}
+
+.sent .preview {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.btn.danger {
+  color: #c0392b;
+  border-color: rgba(192, 57, 43, 0.25);
+  flex-shrink: 0;
 }
 
 .ok {

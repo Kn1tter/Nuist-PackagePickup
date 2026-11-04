@@ -17,6 +17,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { formatTimeShort } from '../lib/time'
 
 const props = defineProps({
   order: { type: Object, required: true },
@@ -35,14 +36,7 @@ const sizeMap = { small: '小件', medium: '中件', large: '大件' }
 
 const statusText = computed(() => map[props.order.status] || props.order.status)
 const sizeText = computed(() => sizeMap[props.order.package_size] || props.order.package_size)
-const timeText = computed(() => {
-  const raw = props.order.created_at
-  if (!raw) return ''
-  const d = new Date(raw)
-  if (Number.isNaN(d.getTime())) return String(raw).slice(0, 16)
-  const pad = (n) => String(n).padStart(2, '0')
-  return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
-})
+const timeText = computed(() => formatTimeShort(props.order.created_at))
 </script>
 
 <style scoped>

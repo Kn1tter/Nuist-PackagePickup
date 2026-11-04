@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
   phone VARCHAR(20) NOT NULL,
   password_hash TEXT NOT NULL,
   nickname VARCHAR(50),
+  nickname_changed_at TIMESTAMP,
   credit_score INT DEFAULT 100,
   is_admin BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT NOW()
@@ -84,6 +85,7 @@ CREATE TABLE IF NOT EXISTS messages (
   title VARCHAR(120) NOT NULL,
   body TEXT NOT NULL,
   link TEXT,
+  announce_id VARCHAR(40),
   is_read BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT NOW()
 );
@@ -97,4 +99,44 @@ CREATE INDEX IF NOT EXISTS idx_resources_created ON resources(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_messages_user ON messages(user_id, is_read, created_at DESC);
 
 -- 可选：把指定学号设为管理员（把学号改成你的）
+CREATE TABLE IF NOT EXISTS changelogs (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id),
+  title VARCHAR(120) NOT NULL,
+  body TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_changelogs_created ON changelogs(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS chaoxing_bindings (
+  user_id INT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  cx_username VARCHAR(80) NOT NULL,
+  cx_password_enc TEXT NOT NULL,
+  notify_enabled BOOLEAN DEFAULT TRUE,
+  notify_hours_before INT DEFAULT 48,
+  course_limit INT DEFAULT 12,
+  push_bark_url TEXT,
+  push_webhook_url TEXT,
+  last_fetch_at TIMESTAMP,
+  last_notify_at TIMESTAMP,
+  last_error TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS chaoxing_homework_cache (
+  user_id INT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  payload TEXT NOT NULL,
+  fetched_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS chaoxing_notify_log (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  homework_key VARCHAR(240) NOT NULL,
+  kind VARCHAR(40) NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_chaoxing_notify_user ON chaoxing_notify_log(user_id, kind, created_at DESC);
+
 -- UPDATE users SET is_admin = TRUE WHERE student_id = '你的学号';

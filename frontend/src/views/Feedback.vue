@@ -51,6 +51,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { request } from '../api/request'
+import { formatTime } from '../lib/time'
 
 const feedbacks = ref([])
 const isAdmin = ref(false)
@@ -61,13 +62,6 @@ const formError = ref('')
 const sending = ref(false)
 const drafts = reactive({})
 const replyingId = ref(null)
-
-function formatTime(v) {
-  if (!v) return ''
-  const d = new Date(v)
-  if (Number.isNaN(d.getTime())) return String(v).slice(0, 16)
-  return d.toLocaleString('zh-CN', { hour12: false })
-}
 
 async function load() {
   loading.value = true

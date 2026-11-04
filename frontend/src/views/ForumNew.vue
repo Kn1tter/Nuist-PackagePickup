@@ -1,7 +1,7 @@
 <template>
   <main class="panel form-wrap">
     <h1>发帖</h1>
-    <p class="muted">说清楚一点，方便同学回复和跟进。</p>
+    <p class="muted">说清楚一点，方便同学回复和跟进。发帖可获得经验值。</p>
 
     <form @submit.prevent="submit">
       <div class="field">

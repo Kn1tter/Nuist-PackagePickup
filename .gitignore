@@ -1,8 +1,12 @@
 node_modules/
 dist/
 .env
+.venv/
+**/__pycache__/
+*.pyc
 backend/data/
 backend/uploads/*
 !backend/uploads/.gitkeep
 *.log
 .DS_Store
+tools/chaoxing-homework/.venv/

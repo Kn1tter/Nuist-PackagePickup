@@ -3,9 +3,16 @@
     <div class="hero panel">
       <div>
         <h1>校园论坛</h1>
-        <p class="muted">交流 · 求助 · 反馈 · Make NUIST Better</p>
+        <p class="muted">交流 · 点赞 · 经验升级 · Make NUIST Better</p>
       </div>
-      <RouterLink class="btn" to="/forum/new">发帖</RouterLink>
+      <RouterLink v-if="canPost" class="btn" to="/forum/new">发帖</RouterLink>
+      <RouterLink
+        v-else
+        class="btn ghost"
+        :to="{ name: 'login', query: { redirect: '/forum/new', reason: isGuestUser ? 'guest' : undefined } }"
+      >
+        {{ isGuestUser ? '注册后发帖' : '登录后发帖' }}
+      </RouterLink>
     </div>
 
     <p v-if="error" class="err">{{ error }}</p>
@@ -23,8 +30,9 @@
         <h2>{{ p.title }}</h2>
         <p class="preview">{{ p.body_preview }}</p>
         <div class="meta muted">
-          <span>{{ p.nickname || '同学' }}</span>
+          <span>{{ p.nickname || '同学' }} · Lv.{{ p.level || 1 }}</span>
           <span>{{ formatTime(p.created_at) }}</span>
+          <span>{{ p.like_count || 0 }} 赞</span>
           <span>{{ p.reply_count }} 回复</span>
         </div>
       </article>
@@ -33,21 +41,17 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { request } from '../api/request'
+import { computed, onMounted, ref } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
+import { isGuest, isMember, request } from '../api/request'
+import { formatTime } from '../lib/time'
 
 const router = useRouter()
 const posts = ref([])
 const loading = ref(true)
 const error = ref('')
-
-function formatTime(v) {
-  if (!v) return ''
-  const d = new Date(v)
-  if (Number.isNaN(d.getTime())) return String(v).slice(0, 16)
-  return d.toLocaleString('zh-CN', { hour12: false })
-}
+const canPost = computed(() => isMember())
+const isGuestUser = computed(() => isGuest())
 
 async function load() {
   loading.value = true

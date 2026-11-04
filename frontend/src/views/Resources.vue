@@ -5,7 +5,14 @@
         <h1>资源库</h1>
         <p class="muted">课件 · 历年卷 · 网盘链接 · 同学互助分享</p>
       </div>
-      <RouterLink class="btn" to="/resources/new">上传资源</RouterLink>
+      <RouterLink v-if="canUpload" class="btn" to="/resources/new">上传资源</RouterLink>
+      <RouterLink
+        v-else
+        class="btn ghost"
+        :to="{ name: 'login', query: { redirect: '/resources/new', reason: isGuestUser ? 'guest' : undefined } }"
+      >
+        {{ isGuestUser ? '注册后上传' : '登录后上传' }}
+      </RouterLink>
     </div>
 
     <div class="filters">
@@ -54,8 +61,9 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { request } from '../api/request'
+import { RouterLink, useRouter } from 'vue-router'
+import { isGuest, isMember, request } from '../api/request'
+import { formatTime } from '../lib/time'
 
 const router = useRouter()
 const resources = ref([])
@@ -63,19 +71,14 @@ const categories = ref([])
 const filter = ref('全部')
 const loading = ref(true)
 const error = ref('')
+const canUpload = computed(() => isMember())
+const isGuestUser = computed(() => isGuest())
 
 const list = computed(() =>
   filter.value === '全部'
     ? resources.value
     : resources.value.filter((r) => r.category === filter.value)
 )
-
-function formatTime(v) {
-  if (!v) return ''
-  const d = new Date(v)
-  if (Number.isNaN(d.getTime())) return String(v).slice(0, 16)
-  return d.toLocaleString('zh-CN', { hour12: false })
-}
 
 function open(id) {
   router.push(`/resources/${id}`)

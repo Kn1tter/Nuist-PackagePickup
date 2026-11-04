@@ -55,10 +55,12 @@
         </div>
         <div class="field">
           <label>宿舍楼</label>
-          <select v-model="form.dorm_building" required>
-            <option disabled value="">请选择</option>
-            <option v-for="d in options.dorm_buildings" :key="d" :value="d">{{ d }}</option>
-          </select>
+          <input
+            v-model="form.dorm_building"
+            maxlength="40"
+            placeholder="例如：梅苑3栋 / 兰苑A座"
+            required
+          />
         </div>
       </div>
 
@@ -118,7 +120,6 @@ const rewardPresets = [2, 3, 5, 8]
 
 const options = reactive({
   express_companies: [],
-  dorm_buildings: [],
   package_sizes: [
     { value: 'small', label: '小件（文件/鞋盒以内）' },
     { value: 'medium', label: '中件（日常包裹）' },
@@ -145,7 +146,6 @@ async function loadOptions() {
   try {
     const data = await request('/orders/options')
     options.express_companies = data.express_companies || []
-    options.dorm_buildings = data.dorm_buildings || []
     if (data.package_sizes?.length) options.package_sizes = data.package_sizes
     optionsReady.value = true
   } catch (e) {

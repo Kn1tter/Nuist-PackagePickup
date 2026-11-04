@@ -65,6 +65,7 @@ export async function migrate({ queryAll, queryOne, execute, isPostgres }) {
         title VARCHAR(120) NOT NULL,
         body TEXT NOT NULL,
         link TEXT,
+        announce_id VARCHAR(40),
         is_read BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT NOW()
       )
@@ -208,6 +209,7 @@ export async function migrate({ queryAll, queryOne, execute, isPostgres }) {
         title TEXT NOT NULL,
         body TEXT NOT NULL,
         link TEXT,
+        announce_id TEXT,
         is_read INTEGER DEFAULT 0,
         created_at TEXT DEFAULT (datetime('now'))
       )
@@ -284,12 +286,113 @@ export async function migrate({ queryAll, queryOne, execute, isPostgres }) {
     `);
   }
 
-  // 代拿：备注、快递单号；放宽宿舍/快递公司字段长度
+  // 代拿：备注、快递单号；放宽宿舍/快递公司字段长度；用户邮箱；个性签名；小游戏战绩
   if (isPostgres()) {
     await execute(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS remark TEXT`);
     await execute(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_no VARCHAR(40)`);
     await execute(`ALTER TABLE orders ALTER COLUMN dorm_building TYPE VARCHAR(40)`);
     await execute(`ALTER TABLE orders ALTER COLUMN express_company TYPE VARCHAR(40)`);
+    await execute(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS announce_id VARCHAR(40)`);
+    await execute(`CREATE INDEX IF NOT EXISTS idx_messages_announce ON messages(announce_id)`);
+    await execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(120)`);
+    await execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
+    await execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS signature VARCHAR(60) DEFAULT ''`);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS arcade_stats (
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        game VARCHAR(16) NOT NULL,
+        wins INT DEFAULT 0,
+        losses INT DEFAULT 0,
+        flees INT DEFAULT 0,
+        best_score INT DEFAULT 0,
+        updated_at TIMESTAMP DEFAULT NOW(),
+        PRIMARY KEY (user_id, game)
+      )
+    `);
+    await execute(
+      `ALTER TABLE arcade_stats ADD COLUMN IF NOT EXISTS best_score INT DEFAULT 0`
+    );
+    await execute(
+      `CREATE INDEX IF NOT EXISTS idx_arcade_stats_rank ON arcade_stats(game, wins DESC, losses ASC)`
+    );
+    await execute(
+      `CREATE INDEX IF NOT EXISTS idx_arcade_stats_score ON arcade_stats(game, best_score DESC)`
+    );
+    await execute(`
+      CREATE TABLE IF NOT EXISTS site_settings (
+        key VARCHAR(80) PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS courier_specialists (
+        id SERIAL PRIMARY KEY,
+        nickname VARCHAR(40) NOT NULL,
+        qq VARCHAR(20) NOT NULL,
+        note VARCHAR(80) DEFAULT '',
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS xp INT DEFAULT 0`);
+    await execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS nickname_changed_at TIMESTAMP`);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS forum_post_likes (
+        post_id INT NOT NULL REFERENCES forum_posts(id) ON DELETE CASCADE,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT NOW(),
+        PRIMARY KEY (post_id, user_id)
+      )
+    `);
+    await execute(
+      `CREATE INDEX IF NOT EXISTS idx_forum_post_likes_user ON forum_post_likes(user_id)`
+    );
+    await execute(`
+      CREATE TABLE IF NOT EXISTS changelogs (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id),
+        title VARCHAR(120) NOT NULL,
+        body TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await execute(`CREATE INDEX IF NOT EXISTS idx_changelogs_created ON changelogs(created_at DESC)`);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS chaoxing_bindings (
+        user_id INT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        cx_username VARCHAR(80) NOT NULL,
+        cx_password_enc TEXT NOT NULL,
+        notify_enabled BOOLEAN DEFAULT TRUE,
+        notify_hours_before INT DEFAULT 48,
+        course_limit INT DEFAULT 12,
+        push_bark_url TEXT,
+        push_webhook_url TEXT,
+        last_fetch_at TIMESTAMP,
+        last_notify_at TIMESTAMP,
+        last_error TEXT,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS chaoxing_homework_cache (
+        user_id INT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        payload TEXT NOT NULL,
+        fetched_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS chaoxing_notify_log (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        homework_key VARCHAR(240) NOT NULL,
+        kind VARCHAR(40) NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await execute(
+      `CREATE INDEX IF NOT EXISTS idx_chaoxing_notify_user ON chaoxing_notify_log(user_id, kind, created_at DESC)`
+    );
   } else {
     try {
       await execute(`ALTER TABLE orders ADD COLUMN remark TEXT`);
@@ -301,6 +404,166 @@ export async function migrate({ queryAll, queryOne, execute, isPostgres }) {
     } catch {
       /* exists */
     }
+    try {
+      await execute(`ALTER TABLE messages ADD COLUMN announce_id TEXT`);
+    } catch {
+      /* exists */
+    }
+    try {
+      await execute(`ALTER TABLE users ADD COLUMN email TEXT`);
+    } catch {
+      /* exists */
+    }
+    try {
+      await execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
+    } catch {
+      /* exists / nulls */
+    }
+    try {
+      await execute(`ALTER TABLE users ADD COLUMN signature TEXT DEFAULT ''`);
+    } catch {
+      /* exists */
+    }
+    await execute(`
+      CREATE TABLE IF NOT EXISTS arcade_stats (
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        game TEXT NOT NULL,
+        wins INTEGER DEFAULT 0,
+        losses INTEGER DEFAULT 0,
+        flees INTEGER DEFAULT 0,
+        best_score INTEGER DEFAULT 0,
+        updated_at TEXT DEFAULT (datetime('now')),
+        PRIMARY KEY (user_id, game)
+      )
+    `);
+    try {
+      await execute(`ALTER TABLE arcade_stats ADD COLUMN best_score INTEGER DEFAULT 0`);
+    } catch {
+      /* exists */
+    }
+    try {
+      await execute(
+        `CREATE INDEX IF NOT EXISTS idx_arcade_stats_rank ON arcade_stats(game, wins DESC, losses ASC)`
+      );
+    } catch {
+      /* exists */
+    }
+    try {
+      await execute(
+        `CREATE INDEX IF NOT EXISTS idx_arcade_stats_score ON arcade_stats(game, best_score DESC)`
+      );
+    } catch {
+      /* exists */
+    }
+    await execute(`
+      CREATE TABLE IF NOT EXISTS site_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT DEFAULT (datetime('now'))
+      )
+    `);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS courier_specialists (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nickname TEXT NOT NULL,
+        qq TEXT NOT NULL,
+        note TEXT DEFAULT '',
+        created_at TEXT DEFAULT (datetime('now'))
+      )
+    `);
+    try {
+      await execute(`ALTER TABLE users ADD COLUMN xp INTEGER DEFAULT 0`);
+    } catch {
+      /* exists */
+    }
+    try {
+      await execute(`ALTER TABLE users ADD COLUMN nickname_changed_at TEXT`);
+    } catch {
+      /* exists */
+    }
+    await execute(`
+      CREATE TABLE IF NOT EXISTS forum_post_likes (
+        post_id INTEGER NOT NULL REFERENCES forum_posts(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TEXT DEFAULT (datetime('now')),
+        PRIMARY KEY (post_id, user_id)
+      )
+    `);
+    try {
+      await execute(
+        `CREATE INDEX IF NOT EXISTS idx_forum_post_likes_user ON forum_post_likes(user_id)`
+      );
+    } catch {
+      /* exists */
+    }
+    await execute(`
+      CREATE TABLE IF NOT EXISTS changelogs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now'))
+      )
+    `);
+    try {
+      await execute(`CREATE INDEX IF NOT EXISTS idx_changelogs_created ON changelogs(created_at DESC)`);
+    } catch {
+      /* exists */
+    }
+    await execute(`
+      CREATE TABLE IF NOT EXISTS chaoxing_bindings (
+        user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        cx_username TEXT NOT NULL,
+        cx_password_enc TEXT NOT NULL,
+        notify_enabled INTEGER DEFAULT 1,
+        notify_hours_before INTEGER DEFAULT 48,
+        course_limit INTEGER DEFAULT 12,
+        push_bark_url TEXT,
+        push_webhook_url TEXT,
+        last_fetch_at TEXT,
+        last_notify_at TEXT,
+        last_error TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+      )
+    `);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS chaoxing_homework_cache (
+        user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        payload TEXT NOT NULL,
+        fetched_at TEXT DEFAULT (datetime('now'))
+      )
+    `);
+    await execute(`
+      CREATE TABLE IF NOT EXISTS chaoxing_notify_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        homework_key TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now'))
+      )
+    `);
+    try {
+      await execute(
+        `CREATE INDEX IF NOT EXISTS idx_chaoxing_notify_user ON chaoxing_notify_log(user_id, kind, created_at DESC)`
+      );
+    } catch {
+      /* exists */
+    }
+  }
+
+  // 预置官方派送专员（不存在时插入）
+  try {
+    const seedQq = '1440205803';
+    const exists = await queryOne(`SELECT id FROM courier_specialists WHERE qq = ?`, [seedQq]);
+    if (!exists) {
+      await execute(
+        `INSERT INTO courier_specialists (nickname, qq, note) VALUES (?, ?, ?)`,
+        ['官方派送专员', seedQq, '校园代拿官方专员']
+      );
+    }
+  } catch (e) {
+    console.warn('[migrate] courier_specialists seed skipped:', e.message);
   }
 
   await syncAdmins({ queryOne, execute, isPostgres });

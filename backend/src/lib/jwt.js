@@ -12,3 +12,14 @@ export function getJwtSecret() {
   }
   return secret || 'dev-secret';
 }
+
+/** jwt.verify 失败时的可读提示（过期 / 无效不要混成一句） */
+export function jwtAuthErrorMessage(err) {
+  if (err?.name === 'TokenExpiredError') {
+    return '登录已过期，请重新登录';
+  }
+  if (err?.name === 'JsonWebTokenError' || err?.name === 'NotBeforeError') {
+    return '登录状态无效，请重新登录';
+  }
+  return '登录校验失败，请重新登录';
+}

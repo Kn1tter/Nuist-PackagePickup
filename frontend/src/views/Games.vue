@@ -55,7 +55,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { request, requireLogin } from '../api/request'
+import { request, requireMember } from '../api/request'
 
 const router = useRouter()
 const groups = ref([])
@@ -80,12 +80,12 @@ async function load() {
 }
 
 function toggleCreate() {
-  if (!showCreate.value && !requireLogin(router)) return
+  if (!showCreate.value && !requireMember(router)) return
   showCreate.value = !showCreate.value
 }
 
 async function createGroup() {
-  if (!requireLogin(router)) return
+  if (!requireMember(router)) return
   creating.value = true
   formError.value = ''
   try {

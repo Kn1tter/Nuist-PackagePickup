@@ -57,7 +57,7 @@ onMounted(reload)
   padding: 12px;
   background: linear-gradient(180deg, #0f2f24, #1a4a38);
   color: #f4fff8;
-  font-family: 'DM Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family: var(--font);
 }
 
 header {

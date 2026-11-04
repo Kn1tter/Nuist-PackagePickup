@@ -32,6 +32,15 @@ export function isLoggedIn() {
   return !!getToken()
 }
 
+export function isGuest() {
+  return !!getUser()?.is_guest
+}
+
+/** 已登录且非访客（可发帖、发单等） */
+export function isMember() {
+  return isLoggedIn() && !isGuest()
+}
+
 /** 操作前确认登录；未登录则跳转登录页并带上回跳地址 */
 export function requireLogin(router, redirect) {
   if (isLoggedIn()) return true
@@ -44,6 +53,22 @@ export function requireLogin(router, redirect) {
   return false
 }
 
+/** 写操作：需正式账号；访客跳转登录页提示注册 */
+export function requireMember(router, redirect) {
+  if (isMember()) return true
+  const path =
+    redirect ||
+    (typeof window !== 'undefined'
+      ? `${window.location.pathname}${window.location.search}`
+      : '/')
+  if (isGuest()) {
+    router.push({ name: 'login', query: { redirect: path, reason: 'guest' } })
+    return false
+  }
+  router.push({ name: 'login', query: { redirect: path } })
+  return false
+}
+
 export async function request(path, options = {}) {
   const headers = { ...(options.headers || {}) }
   if (!(options.body instanceof FormData)) {
@@ -52,20 +77,30 @@ export async function request(path, options = {}) {
   const token = getToken()
   if (token) headers.Authorization = `Bearer ${token}`
 
-  const res = await fetch(`${API_BASE}/api${path}`, {
-    ...options,
-    headers,
-    body:
-      options.body instanceof FormData
-        ? options.body
-        : options.body != null
-          ? JSON.stringify(options.body)
-          : undefined,
-  })
+  let res
+  try {
+    res = await fetch(`${API_BASE}/api${path}`, {
+      ...options,
+      headers,
+      body:
+        options.body instanceof FormData
+          ? options.body
+          : options.body != null
+            ? JSON.stringify(options.body)
+            : undefined,
+    })
+  } catch {
+    throw new Error('网络异常，请检查连接后重试')
+  }
 
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
-    throw new Error(data.error || `请求失败 (${res.status})`)
+    const msg = data.error || `请求失败 (${res.status})`
+    // 本地还留着失效 token 时会一直报「登录已过期」——清掉让用户重新登
+    if (res.status === 401 && /登录|未登录/.test(msg)) {
+      clearSession()
+    }
+    throw new Error(msg)
   }
   return data
 }

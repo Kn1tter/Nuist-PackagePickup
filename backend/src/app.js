@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import http from 'http';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -12,8 +13,25 @@ import resourceRoutes from './routes/resources.js';
 import inboxRoutes from './routes/inbox.js';
 import gamesRoutes from './routes/games.js';
 import scheduleRoutes from './routes/schedule.js';
+import videoRoutes from './routes/video.js';
+import poolRoutes from './routes/pool.js';
+import skullRoutes from './routes/skull.js';
+import tankRoutes from './routes/tank.js';
+import dinoRoutes from './routes/dino.js';
+import curlingRoutes from './routes/curling.js';
+import adminRoutes from './routes/admin.js';
+import arcadeApiRoutes from './routes/arcade.js';
+import hubRoutes from './routes/hub.js';
+import changelogRoutes from './routes/changelog.js';
+import chaoxingRoutes from './routes/chaoxing.js';
 import { ready } from './db/index.js';
 import { getJwtSecret } from './lib/jwt.js';
+import { runChaoxingCron } from './lib/chaoxingJob.js';
+import { attachPoolWs } from './lib/poolWs.js';
+import { attachSkullWs } from './lib/skullWs.js';
+import { attachTankWs } from './lib/tankWs.js';
+import { attachDinoWs } from './lib/dinoWs.js';
+import { attachCurlingWs } from './lib/curlingWs.js';
 
 // Fail fast if production secret is missing/weak
 getJwtSecret();
@@ -61,6 +79,17 @@ app.use('/api/resources', resourceRoutes);
 app.use('/api/inbox', inboxRoutes);
 app.use('/api/games', gamesRoutes);
 app.use('/api/schedule', scheduleRoutes);
+app.use('/api/video', videoRoutes);
+app.use('/api/pool', poolRoutes);
+app.use('/api/skull', skullRoutes);
+app.use('/api/tank', tankRoutes);
+app.use('/api/dino', dinoRoutes);
+app.use('/api/curling', curlingRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/arcade', arcadeApiRoutes);
+app.use('/api/hub', hubRoutes);
+app.use('/api/changelog', changelogRoutes);
+app.use('/api/chaoxing', chaoxingRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);
@@ -70,9 +99,71 @@ app.use((err, _req, res, _next) => {
 await ready;
 
 if (!process.env.VERCEL) {
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = http.createServer(app);
+  const poolWss = attachPoolWs(server);
+  const skullWss = attachSkullWs(server);
+  const tankWss = attachTankWs(server);
+  const dinoWss = attachDinoWs(server);
+  const curlingWss = attachCurlingWs(server);
+  // One upgrade router — multiple {server,path} WSS would 400 each other
+  server.on('upgrade', (req, socket, head) => {
+    let pathname = '/';
+    try {
+      pathname = new URL(req.url || '/', 'http://localhost').pathname;
+    } catch {
+      socket.destroy();
+      return;
+    }
+    if (pathname === '/api/pool/ws') {
+      poolWss.handleUpgrade(req, socket, head, (ws) => {
+        poolWss.emit('connection', ws, req);
+      });
+      return;
+    }
+    if (pathname === '/api/skull/ws') {
+      skullWss.handleUpgrade(req, socket, head, (ws) => {
+        skullWss.emit('connection', ws, req);
+      });
+      return;
+    }
+    if (pathname === '/api/tank/ws') {
+      tankWss.handleUpgrade(req, socket, head, (ws) => {
+        tankWss.emit('connection', ws, req);
+      });
+      return;
+    }
+    if (pathname === '/api/dino/ws') {
+      dinoWss.handleUpgrade(req, socket, head, (ws) => {
+        dinoWss.emit('connection', ws, req);
+      });
+      return;
+    }
+    if (pathname === '/api/curling/ws') {
+      curlingWss.handleUpgrade(req, socket, head, (ws) => {
+        curlingWss.emit('connection', ws, req);
+      });
+      return;
+    }
+    socket.destroy();
+  });
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`NUIST Package Pickup API → http://0.0.0.0:${PORT}`);
   });
+
+  // 本地/常驻进程：定时拉取学习通并推送（Vercel 用 vercel.json crons）
+  const cronMs = Number(process.env.CHAOXING_CRON_MS || 6 * 3600_000);
+  if (cronMs > 0 && process.env.CHAOXING_CRON_DISABLE !== '1') {
+    const tick = async () => {
+      try {
+        const summary = await runChaoxingCron({ limit: 40 });
+        console.log('[chaoxing cron]', summary);
+      } catch (e) {
+        console.error('[chaoxing cron]', e.message || e);
+      }
+    };
+    setTimeout(tick, 45_000);
+    setInterval(tick, cronMs);
+  }
 }
 
 export default app;
