@@ -1,6 +1,7 @@
 {
-  "version": "1.1.2",
-  "versionCode": 4,
+  "version": "1.1.18",
+  "versionCode": 20,
   "apkUrl": "https://chocolatefornuist.tech/app/chocolate-ledger.apk",
-  "notes": "可编辑月预算"
+  "apkSize": 91268505,
+  "notes": "年度账单：首页今日/本月/本年筛选与年汇总；分析页本年区间、月度拆分与同比；收支均可查看。"
 }
