@@ -90,4 +90,4 @@ CHOCOLATE_LEDGER_TAG=chocolate-ledger-x.y.z bash deploy/sync-chocolate-ledger.sh
 CHOCOLATE_LEDGER_APK=/path/to/chocolate-ledger.apk bash deploy/sync-chocolate-ledger.sh
 ```
 
-当前频道：**1.1.2** / versionCode **4**（可编辑月预算）。
+当前频道：**1.1.9** / versionCode **11**（站点直链 APK 供应用内更新）。

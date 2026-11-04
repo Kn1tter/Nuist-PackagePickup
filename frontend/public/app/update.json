@@ -1,6 +1,6 @@
 {
-  "version": "1.1.2",
-  "versionCode": 4,
+  "version": "1.1.9",
+  "versionCode": 11,
   "apkUrl": "https://chocolatefornuist.tech/app/chocolate-ledger.apk",
-  "notes": "可编辑月预算"
+  "notes": "修复应用内更新（站点直链 APK、跟随 GitHub 302、安装调起）"
 }

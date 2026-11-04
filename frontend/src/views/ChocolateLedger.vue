@@ -60,7 +60,7 @@
 <script setup>
 import { onMounted } from 'vue'
 
-const version = '1.1.2'
+const version = '1.1.9'
 const apkUrl = '/app/chocolate-ledger.apk'
 const updateJsonUrl = '/app/update.json'
 
