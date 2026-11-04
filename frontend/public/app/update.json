@@ -1,6 +1,7 @@
 {
-  "version": "1.1.2",
-  "versionCode": 4,
+  "version": "1.1.19",
+  "versionCode": 21,
   "apkUrl": "https://chocolatefornuist.tech/app/chocolate-ledger.apk",
-  "notes": "可编辑月预算"
+  "apkSize": 91320004,
+  "notes": "修复解析包（33）：补回 APK v1（JAR）签名，兼容国内机文件管理器/侧载安装。"
 }
